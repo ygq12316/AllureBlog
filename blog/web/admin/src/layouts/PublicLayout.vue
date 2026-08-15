@@ -19,6 +19,7 @@
     <footer class="blog-footer">&copy; 2026 笔墨 &middot; 记录思考，分享生活</footer>
 
     <VisitorSetup v-if="setupVisible" @close="closeSetup" />
+    <FairyChat />
   </div>
 </template>
 
@@ -28,6 +29,7 @@ import { CreateOutline } from '@vicons/ionicons5'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import VisitorSetup from '../components/VisitorSetup.vue'
+import FairyChat from '../components/FairyChat.vue'
 import { useVisitor } from '../composables/useVisitor'
 
 const { setupVisible, isSetUp, closeSetup, init } = useVisitor()
