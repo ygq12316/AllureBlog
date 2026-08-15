@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Node
+web/admin/node_modules
+web/admin/.vscode
+
+# Build artifacts (will be rebuilt inside Docker)
+web/admin/dist
+
+# Database (mounted as Volume, don't pack into image)
+*.db
+*.db-shm
+*.db-wal
+
+# Executables
+blog.exe
+server.exe
+blog.exe~
+
+# Docs
+docs/
+
+# Misc
+*.md
+seed.js

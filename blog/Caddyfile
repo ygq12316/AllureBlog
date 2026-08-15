@@ -1,0 +1,12 @@
+allureblog.top {
+    # WebSocket chat — 路由到智能体服务
+    handle /chat/* {
+        reverse_proxy agent:8000
+    }
+
+    reverse_proxy app:8080
+
+    log {
+        output stdout
+    }
+}

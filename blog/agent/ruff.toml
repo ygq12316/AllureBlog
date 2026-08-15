@@ -1,0 +1,16 @@
+# ruff 配置 — 安装: pip install ruff
+# 运行: ruff check .
+line-length = 100
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort（导入排序）
+    "UP",  # pyupgrade（现代语法）
+    "B",   # bugbear（常见 bug 模式，如裸 except）
+]
+ignore = [
+    "E501", # 行长由 line-length + format 管
+]

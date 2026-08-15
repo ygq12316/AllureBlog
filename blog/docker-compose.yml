@@ -1,0 +1,64 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: blog-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+      - agent
+    restart: unless-stopped
+    networks:
+      - blog-net
+
+  app:
+    image: allure12316/blog:latest
+    container_name: blog-app
+    env_file: .env
+    environment:
+      - DB_PATH=/app/data/blog.db
+      - PORT=8080
+      - GIN_MODE=release
+    volumes:
+      - blog-data:/app/data
+      - blog-uploads:/app/web/static/uploads
+    restart: unless-stopped
+    networks:
+      - blog-net
+
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: blog-agent
+    env_file: .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - blog-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - blog-net
+
+volumes:
+  blog-data:
+  blog-uploads:
+  caddy-data:
+  caddy-config:
+  redis-data:
+
+networks:
+  blog-net:
+    driver: bridge

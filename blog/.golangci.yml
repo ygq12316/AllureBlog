@@ -1,0 +1,20 @@
+# golangci-lint 配置 — 安装: https://golangci-lint.run/welcome/install/
+# 运行: golangci-lint run
+run:
+  timeout: 3m
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck      # 捕获被忽略的 error（本次审查的主要问题之一）
+    - gosec         # 安全检查（密钥、并发、注入）
+    - gofmt
+    - misspell
+
+issues:
+  # 逐步收紧：先不因存量问题失败，新代码保持干净
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec

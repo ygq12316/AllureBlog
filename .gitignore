@@ -1,0 +1,39 @@
+# Node
+node_modules/
+blog/web/admin/dist/
+
+# Go 构建产物
+*.exe
+*.exe~
+
+# SQLite 数据库（运行时数据）
+*.db
+*.db-shm
+*.db-wal
+
+# 环境变量（含密钥，绝不入库）
+.env
+blog/agent/.env
+
+# 部署工具（不入库，用后即删）
+bfg-1.14.0.jar
+
+# superpowers 会话临时文件
+.superpowers/
+
+# 上传文件（内容不入库，仅保留目录占位）
+blog/web/static/uploads/*
+!blog/web/static/uploads/.gitkeep
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 本地覆盖配置（不入库）
+.claude/
+*.local
+docker-compose*.local.yml
