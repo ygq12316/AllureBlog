@@ -1,13 +1,11 @@
-# blog/agent/main.py
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket
 
+from agent.core import BiMoAgent
 from config.settings import settings
-from memory.short_term import ShortTermMemory
-from agent.core import create_bi_mo_agent
+from memory.chat_store import ChatStore
 from ws.handler import ChatHandler
 
 # 配置日志
@@ -18,29 +16,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── 全局服务实例 ──
-short_memory: ShortTermMemory | None = None
-agent = None
+store: ChatStore | None = None
+agent: BiMoAgent | None = None
 chat_handler: ChatHandler | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    global short_memory, agent, chat_handler
+    global store, agent, chat_handler
 
     logger.info("笔墨精灵正在苏醒...")
 
-    # 初始化服务
-    short_memory = ShortTermMemory()
-
-    # 创建 Agent
-    agent = await create_bi_mo_agent()
-
-    # 创建 WebSocket handler
-    chat_handler = ChatHandler(
-        agent=agent,
-        short_term_memory=short_memory,
-    )
+    store = ChatStore()
+    agent = BiMoAgent()
+    chat_handler = ChatHandler(agent=agent, store=store)
 
     logger.info("笔墨精灵已就绪。")
 
@@ -48,13 +38,13 @@ async def lifespan(app: FastAPI):
 
     # 清理
     logger.info("笔墨精灵正在休憩...")
-    await short_memory.close()
+    await store.close()
 
 
 app = FastAPI(
     title="笔墨精灵智能体服务",
     description="博客「笔墨 · Ink & Code」的访客互动伴侣",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -65,7 +55,7 @@ async def health():
     return {
         "status": "ok",
         "service": "笔墨精灵智能体",
-        "version": "0.1.0",
+        "version": "0.2.0",
     }
 
 

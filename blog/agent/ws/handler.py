@@ -1,10 +1,15 @@
-# blog/agent/ws/handler.py
-"""WebSocket 聊天处理器 — 管理 DeepAgents 流式对话的生命周期"""
+"""WebSocket 聊天处理器 — 登录校验、每日限额、流式推送（可打断）"""
 import asyncio
 import logging
 
+import httpx
 from fastapi import WebSocket, WebSocketDisconnect
 
+from agent.core import BiMoAgent
+from config.settings import settings
+from guard.input_filter import check_input
+from guard.output_filter import filter_output
+from memory.chat_store import ChatStore
 from ws.protocol import ClientMessage, ServerMessage
 
 logger = logging.getLogger(__name__)
@@ -13,9 +18,9 @@ logger = logging.getLogger(__name__)
 class ChatHandler:
     """WebSocket 聊天处理器 — 管理连接生命周期和流式推送"""
 
-    def __init__(self, agent, short_term_memory):
+    def __init__(self, agent: BiMoAgent, store: ChatStore):
         self.agent = agent
-        self.short_term_memory = short_term_memory
+        self.store = store
 
     async def handle(self, ws: WebSocket) -> None:
         """主处理入口"""
@@ -24,27 +29,31 @@ class ChatHandler:
         # ── Step 1: 等待并校验 auth 消息 ──
         try:
             raw = await ws.receive_json()
-        except Exception:
-            await self._reject(ws, "请先完成身份认证")
-            return
-
-        try:
             auth = ClientMessage.model_validate(raw)
         except Exception:
-            await self._reject(ws, "消息格式错误")
-            return
-
+            auth = None
         # visitor_uuid 缺失会让所有匿名访客共享同一会话，必须拒绝
-        if auth.type != "auth" or not (auth.visitor_uuid or "").strip():
-            await self._reject(ws, "请先完成身份认证")
+        if auth is None or auth.type != "auth" or not (auth.visitor_uuid or "").strip():
+            await self._close_with(ws, ServerMessage.auth_result(
+                False, "请先完成身份认证。", code="login_required"))
+            return
+        visitor_uuid = auth.visitor_uuid.strip()
+
+        # ── Step 2: 登录校验 — Go 后端查访客记录，username 非空才算账号用户 ──
+        visitor = await self._fetch_visitor(visitor_uuid)
+        if visitor is None:
+            await self._close_with(ws, ServerMessage.auth_result(
+                False, "暂时无法验证身份，稍候再来。", code="auth_failed"))
+            return
+        if not (visitor.get("username") or "").strip():
+            await self._close_with(ws, ServerMessage.auth_result(
+                False, "请先注册账号并登录，再来与笔墨精灵对话。", code="login_required"))
             return
 
-        visitor_uuid = auth.visitor_uuid.strip()
-        visitor_name = (auth.visitor_name or "访客").strip() or "访客"
-
-        # ── Step 2: 个性化问候 ──
-        greeting = f"笔墨精灵在此，愿与你共话天地，{visitor_name}。"
-        await ws.send_json(ServerMessage.auth_result(True, greeting))
+        remaining = await self.store.remaining_today(visitor_uuid)
+        nickname = (visitor.get("nickname") or "访客").strip() or "访客"
+        greeting = f"笔墨精灵在此，愿与你共话天地，{nickname}。"
+        await ws.send_json(ServerMessage.auth_result(True, greeting, remaining=remaining))
 
         # ── Step 3: 后台接收任务 — 流式生成期间也能响应 interrupt/ping ──
         recv_queue: asyncio.Queue = asyncio.Queue()
@@ -73,9 +82,23 @@ class ChatHandler:
         finally:
             recv_task.cancel()
 
+    # ── 登录校验 ──
+
+    async def _fetch_visitor(self, uuid: str) -> dict | None:
+        """查 Go 后端访客记录。返回访客 dict；网络/服务异常返回 None（fail-closed）。"""
+        try:
+            async with httpx.AsyncClient(timeout=3) as client:
+                r = await client.get(f"{settings.blog_api_base}/api/visitor/{uuid}")
+        except httpx.HTTPError as e:
+            logger.warning("[auth] 博客后端不可达: %s", e)
+            return None
+        if r.status_code != 200:
+            return {}  # 记录不存在（404 等）视作未登录访客，而非服务故障
+        return r.json().get("visitor") or {}
+
     @staticmethod
-    async def _reject(ws: WebSocket, display: str) -> None:
-        await ws.send_json(ServerMessage.error("auth_required", display))
+    async def _close_with(ws: WebSocket, msg: dict) -> None:
+        await ws.send_json(msg)
         await ws.close()
 
     # ── 主对话循环 ──
@@ -101,6 +124,23 @@ class ChatHandler:
             if not user_content:
                 continue
 
+            # 每日限额：发出的 message 皆计数（含被拒与被拦截的，防反复试探）
+            count = await self.store.incr_today(visitor_uuid)
+            remaining = max(0, settings.daily_message_limit - count)
+            if count > settings.daily_message_limit:
+                await ws.send_json(ServerMessage.error(
+                    "limit_exceeded",
+                    f"今日笔墨已尽（{settings.daily_message_limit} 次），明日再会。"))
+                continue
+
+            # 输入拦截：命中直接回固定话术，不进模型
+            rejected = check_input(user_content)
+            if rejected:
+                await ws.send_json(ServerMessage.token(rejected, 0))
+                await ws.send_json(ServerMessage.done(1, remaining, rejected))
+                await self.store.append_round(visitor_uuid, user_content, rejected)
+                continue
+
             await self._stream_reply(ws, recv_queue, visitor_uuid, user_content)
 
     # ── 流式生成（可被 interrupt 打断）──
@@ -116,26 +156,17 @@ class ChatHandler:
         token_index = 0
         full_response = ""
 
-        config = {
-            "configurable": {
-                "thread_id": visitor_uuid,
-                "visitor_uuid": visitor_uuid,
-            },
-        }
-
-        stream = self.agent.astream_events(
-            {"messages": [{"role": "user", "content": user_content}]},
-            config=config,
-            version="v2",
-        )
+        history = await self.store.get_history(visitor_uuid)
+        stream = self.agent.astream(history, user_content)
 
         try:
             async for event in self._events_with_interrupt(ws, recv_queue, stream):
-                token = self._extract_token(event)
-                if token:
-                    full_response += token
-                    await ws.send_json(ServerMessage.token(token, token_index))
+                if event["event"] == "token":
+                    full_response += event["text"]
+                    await ws.send_json(ServerMessage.token(event["text"], token_index))
                     token_index += 1
+                elif event["event"] == "tool_call":
+                    await ws.send_json(ServerMessage.tool_call(event["name"]))
         except _Interrupted:
             interrupted = True
         except Exception as e:
@@ -145,15 +176,16 @@ class ChatHandler:
             )
             return
 
-        await ws.send_json(ServerMessage.done(token_index, [], interrupted=interrupted))
+        final = filter_output(full_response)
+        remaining = await self.store.remaining_today(visitor_uuid)
+        await ws.send_json(ServerMessage.done(
+            token_index, remaining, final, interrupted=interrupted))
 
-        # 对话轮次落 Redis（跨重启的短期记忆审计；会话上下文由 thread_id 管理）
-        await self._remember(visitor_uuid, "user", user_content)
-        if full_response:
-            await self._remember(visitor_uuid, "assistant", full_response)
+        # 本轮入历史（打断的记已生成部分；存 final 保持记忆与展示一致）
+        await self.store.append_round(visitor_uuid, user_content, final)
 
-    async def _events_with_interrupt(self, ws: WebSocket, recv_queue: asyncio.Queue, stream):
-        """把流事件与接收队列复用：任何一方先就绪先处理。
+    async def _events_with_interrupt(self, ws, recv_queue, stream):
+        """把 agent 事件流与接收队列复用：任何一方先就绪先处理。
 
         yield 正常事件；通过抛出 _Interrupted 表达打断，
         流正常结束则直接 return。
@@ -208,23 +240,6 @@ class ChatHandler:
             # 显式打断，或用户直接问了下一个问题
             return True
         return False
-
-    @staticmethod
-    def _extract_token(event: dict) -> str | None:
-        if event.get("event") != "on_chat_model_stream":
-            return None
-        chunk = event.get("data", {}).get("chunk")
-        if chunk and hasattr(chunk, "content") and chunk.content:
-            token = chunk.content
-            if isinstance(token, str) and token:
-                return token
-        return None
-
-    async def _remember(self, visitor_uuid: str, role: str, content: str) -> None:
-        try:
-            await self.short_term_memory.append(visitor_uuid, role, content)
-        except Exception as e:
-            logger.warning("短期记忆写入失败: %s", e)
 
 
 class _Interrupted(Exception):
