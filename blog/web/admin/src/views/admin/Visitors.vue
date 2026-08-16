@@ -1,21 +1,11 @@
 <template>
-  <div class="wrap">
-    <h3 class="title">访客管理 ({{ visitors.length }})</h3>
-    <div v-if="!visitors.length" class="empty">暂无访客</div>
-    <div v-for="v in visitors" :key="v.uuid" class="row">
-      <img :src="`https://api.dicebear.com/9.x/${v.avatar_style}/svg?seed=${v.uuid}`" class="row-avatar" />
-      <div class="row-body">
-        <div class="row-name">{{ v.nickname }}</div>
-        <div class="row-sig">{{ v.signature || '无签名' }}</div>
-        <div class="row-time">{{ v.created_at?.slice(0,10) }}</div>
-      </div>
-      <div class="row-actions">
-        <n-button size="tiny" text @click="editVisitor(v)">编辑</n-button>
-        <n-popconfirm v-if="!v.uuid.startsWith('admin_')" @positive-click="del(v.uuid)">
-          <template #trigger><n-button size="tiny" text type="error">删除</n-button></template>
-          确定删除此访客？其评论和弹幕会保留。
-        </n-popconfirm>
-      </div>
+  <div class="wrap page-wide">
+    <div class="page-head">
+      <h2>访客管理 ({{ visitors.length }})</h2>
+      <div class="page-head-actions" />
+    </div>
+    <div class="panel">
+      <n-data-table :columns="cols" :data="visitors" :bordered="false" size="small" :row-key="r => r.uuid" />
     </div>
 
     <!-- 编辑弹窗 -->
@@ -32,12 +22,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
+import { NButton, NPopconfirm } from 'naive-ui'
 import axios from 'axios'
 
 const visitors = ref([])
 const editing = ref(false)
 const editForm = ref({ uuid: '', nickname: '', signature: '', avatar: '' })
+
+const cols = [
+  {
+    title: '访客', key: 'nickname', width: 200,
+    render(row) {
+      return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
+        h('img', { src: `https://api.dicebear.com/9.x/${row.avatar_style}/svg?seed=${row.uuid}`, style: 'width:28px;height:28px;border-radius:50%;background:var(--tag-bg)' }),
+        h('span', { style: 'font-weight:600' }, row.nickname),
+      ])
+    },
+  },
+  { title: '签名', key: 'signature', width: '*', ellipsis: { tooltip: true }, render(row) { return row.signature || '—' } },
+  { title: '注册时间', key: 'created_at', width: 110, render(row) { return row.created_at?.slice(0, 10) } },
+  {
+    title: '', width: 90,
+    render(row) {
+      const btns = [h(NButton, { size: 'tiny', onClick: () => editVisitor(row) }, { default: () => '编辑' })]
+      if (!row.uuid.startsWith('admin_')) {
+        btns.push(h(NPopconfirm, { onPositiveClick: () => del(row.uuid) }, {
+          trigger: () => h(NButton, { size: 'tiny', text: true, type: 'error' }, { default: () => '删除' }),
+          default: () => '确定删除？评论和弹幕会保留。',
+        }))
+      }
+      return h('div', { style: 'display:flex;gap:2px' }, btns)
+    },
+  },
+]
 
 onMounted(async () => {
   try {
@@ -80,17 +98,6 @@ async function del(uuid) {
 </script>
 
 <style scoped>
-.wrap { max-width: 640px; margin: 0 auto; }
-.title { font-size: 17px; font-weight: 700; color: var(--text); margin: 0 0 20px; }
-.empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
-.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--card-border); }
-.row-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--tag-bg); flex-shrink: 0; }
-.row-body { flex: 1; min-width: 0; }
-.row-name { font-size: 14px; font-weight: 600; color: var(--text); }
-.row-sig { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.row-time { font-size: 10px; color: var(--muted); }
-.row-actions { display: flex; gap: 4px; flex-shrink: 0; }
-
 .edit-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 24px; max-width: 300px; margin: 0 auto; text-align: center; }
 .edit-card h4 { font-size: 16px; margin: 0 0 16px; color: var(--text); }
 .edit-avatar { width: 56px; height: 56px; border-radius: 50%; margin-bottom: 14px; border: 2px solid var(--gold); }
