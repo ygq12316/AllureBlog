@@ -47,6 +47,23 @@
       .n-tag { --n-color: var(--tag-bg); }
       .n-button--default-type { --n-color: var(--tag-bg); }
       .n-data-table .n-data-table-wrapper { background: transparent; }
+
+      /* === 后台统一规范 === */
+      /* 页头：标题 + 主操作 */
+      .page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+      .page-head h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
+      .page-head-actions { display: flex; gap: 8px; align-items: center; }
+      /* 内容面板卡片 */
+      .panel { background: var(--card); border: 1px solid var(--card-border); border-radius: 8px; padding: 20px; }
+      .panel .n-data-table { --n-merged-th-color: var(--card); --n-merged-td-color: var(--card); }
+      .panel .n-data-table .n-data-table-th { background: var(--card) !important; }
+      .panel .n-data-table .n-data-table-td { background: var(--card) !important; }
+      /* 页面容器宽度 */
+      .page-narrow { max-width: 720px; margin: 0 auto; }
+      .page-wide { max-width: 960px; margin: 0 auto; }
+      /* 编辑器顶栏（两个编辑器共用同构） */
+      .editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 10px; }
+      .editor-topbar-side { display: flex; align-items: center; gap: 10px; }
     </style>
   </head>
   <body>
