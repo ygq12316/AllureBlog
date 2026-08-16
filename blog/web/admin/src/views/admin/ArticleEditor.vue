@@ -1,17 +1,17 @@
 <template>
   <div class="wrap">
-    <!-- 极简顶栏 -->
-    <div class="topbar">
+    <!-- 顶栏 -->
+    <div class="editor-topbar">
       <n-button text size="small" @click="$router.push('/admin/articles')">
         <n-icon size="14" :component="ArrowBackIcon" /> 返回
       </n-button>
-      <span class="word-count">{{ form.content.length }} 字</span>
-      <div class="topbar-actions">
+      <span class="count">{{ form.content.length }} 字</span>
+      <div class="editor-topbar-side">
         <n-popconfirm v-if="isEdit" @positive-click="del" positive-text="确认删除" negative-text="取消">
           <template #trigger><n-button text size="small" type="error">删除</n-button></template>
           确定删除这篇文章？此操作不可恢复。
         </n-popconfirm>
-        <n-button type="primary" @click="save" :disabled="!canPublish">发布</n-button>
+        <n-button type="primary" @click="save" :disabled="!canPublish" :loading="saving">发布</n-button>
       </div>
     </div>
 
@@ -76,16 +76,19 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowBackOutline } from '@vicons/ionicons5'
+import { useMessage } from 'naive-ui'
 import axios from 'axios'
 
 const ArrowBackIcon = ArrowBackOutline
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
 const categories = ref([])
 const tagList = ref([])
 const tags = ref([])
 const form = ref({ title: '', content: '', category: '', tags: '', is_published: false })
 const preview = ref('')
+const saving = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
 const cats = computed(() => categories.value.map(c => ({ label: c.name, value: c.name })))
@@ -127,18 +130,27 @@ onMounted(async () => {
 })
 
 async function save() {
-  form.value.is_published = true
-  const id = route.params.id
-  if (id) await axios.put(`/api/articles/${id}`, form.value)
-  else await axios.post('/api/articles', form.value)
-  router.push('/admin/articles')
+  saving.value = true
+  try {
+    form.value.is_published = true
+    const id = route.params.id
+    if (id) await axios.put(`/api/articles/${id}`, form.value)
+    else await axios.post('/api/articles', form.value)
+    router.push('/admin/articles')
+  } catch (e) {
+    message.error(e.response?.data?.error || '发布失败')
+    saving.value = false
+  }
 }
 
 async function del() {
   const id = route.params.id
-  if (id) {
+  if (!id) return
+  try {
     await axios.delete(`/api/articles/${id}`)
     router.push('/admin/articles')
+  } catch (e) {
+    message.error('删除失败')
   }
 }
 </script>
@@ -146,23 +158,7 @@ async function del() {
 <style scoped>
 .wrap { max-width: 1100px; margin: 0 auto; }
 
-/* 顶栏 */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 28px;
-}
-.word-count {
-  font-size: 12px;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-}
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.count { font-size: 13px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 
 /* 标题 */
 .title-input {
