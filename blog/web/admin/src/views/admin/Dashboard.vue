@@ -12,7 +12,7 @@
 
     <!-- 统计 -->
     <div class="stats">
-      <div class="stat" v-for="s in statList" :key="s.label">
+      <div class="panel stat" v-for="s in statList" :key="s.label">
         <n-icon size="18" color="var(--gold)" :component="s.icon" />
         <div class="stat-num">{{ s.value }}</div>
         <div class="stat-label">{{ s.label }}</div>
@@ -27,14 +27,14 @@
 
     <!-- 最近 -->
     <div class="recent">
-      <div class="col">
+      <div class="panel col">
         <div class="col-title">最近文章</div>
         <div v-if="!articles.length" class="col-empty">暂无</div>
         <div v-for="a in articles" :key="a.id" class="col-item" @click="$router.push(`/admin/articles/${a.id}/edit`)">
           <span class="ci-title">{{ a.title }}</span><span class="ci-date">{{ fmt(a.created_at) }}</span>
         </div>
       </div>
-      <div class="col">
+      <div class="panel col">
         <div class="col-title">最近随笔</div>
         <div v-if="!nlist.length" class="col-empty">暂无</div>
         <div v-for="n in nlist" :key="n.id" class="col-item" @click="$router.push('/admin/notes')">
@@ -47,18 +47,20 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { PersonOutline, DocumentTextOutline, ChatbubbleOutline, FolderOpenOutline, PricetagsOutline, CreateOutline } from '@vicons/ionicons5'
+import { PersonOutline, DocumentTextOutline, ChatbubbleOutline, ChatbubblesOutline, FolderOpenOutline, PricetagsOutline, CreateOutline, PeopleOutline } from '@vicons/ionicons5'
 import axios from 'axios'
 
-const PersonIcon=PersonOutline, DocIcon=DocumentTextOutline, ChatIcon=ChatbubbleOutline, FolderIcon=FolderOpenOutline, PricetagIcon=PricetagsOutline, CreateIcon=CreateOutline
+const PersonIcon=PersonOutline, DocIcon=DocumentTextOutline, ChatIcon=ChatbubbleOutline, BubblesIcon=ChatbubblesOutline, FolderIcon=FolderOpenOutline, PricetagIcon=PricetagsOutline, CreateIcon=CreateOutline, PeopleIcon=PeopleOutline
 
-const stats=ref({article_count:0,note_count:0,category_count:0,tag_count:0})
+const stats=ref({article_count:0,note_count:0,category_count:0,tag_count:0,comment_count:0,visitor_count:0})
 const articles=ref([]), nlist=ref([])
 const authorName=ref(''), authorAvatar=ref(''), authorSig=ref('')
 
 const statList=computed(()=>[
   {icon:DocIcon, value:stats.value.article_count, label:'文章'},
   {icon:ChatIcon, value:stats.value.note_count, label:'随笔'},
+  {icon:BubblesIcon, value:stats.value.comment_count ?? 0, label:'评论'},
+  {icon:PeopleIcon, value:stats.value.visitor_count ?? 0, label:'访客'},
   {icon:FolderIcon, value:stats.value.category_count||0, label:'分类'},
   {icon:PricetagIcon, value:stats.value.tag_count||0, label:'标签'},
 ])
@@ -78,14 +80,15 @@ function rel(d){const s=Math.floor((Date.now()-new Date(d).getTime())/1000);if(s
 </script>
 
 <style scoped>
-.dash{max-width:680px;margin:0 auto}
+.dash{max-width:720px;margin:0 auto}
 .welcome{display:flex;align-items:center;gap:12px;margin-bottom:28px}
 .avatar{width:40px;height:40px;border-radius:50%;background:var(--tag-bg);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;color:var(--gold)}
 .welcome-img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)}
 .w-name{font-size:17px;font-weight:700;color:var(--text)}.w-sub{font-size:12px;color:var(--muted)}
 
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.stat{text-align:center;padding:12px 8px}.stat-num{font-size:24px;font-weight:700;color:var(--text)}.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat{text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 8px}
+.stat-num{font-size:24px;font-weight:700;color:var(--text)}.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
 
 .quick{display:flex;gap:10px;margin-bottom:28px}.quick .n-button{flex:1;height:40px}
 
