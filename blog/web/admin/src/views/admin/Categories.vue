@@ -1,8 +1,13 @@
 <template>
-  <div class="wrap">
-    <h2 class="title">分类管理</h2>
-    <div class="add-row"><n-input v-model:value="n" placeholder="分类名称" @keyup.enter="add" /><n-button type="primary" @click="add">添加</n-button></div>
-    <n-data-table :columns="cols" :data="list" :bordered="false" size="small" />
+  <div class="wrap page-narrow">
+    <div class="page-head">
+      <h2>分类管理</h2>
+      <div class="page-head-actions" />
+    </div>
+    <div class="panel">
+      <div class="add-row"><n-input v-model:value="n" placeholder="分类名称" @keyup.enter="add" /><n-button type="primary" @click="add">添加</n-button></div>
+      <n-data-table :columns="cols" :data="list" :bordered="false" size="small" />
+    </div>
   </div>
 </template>
 <script setup>
@@ -14,6 +19,5 @@ async function add(){if(!n.value.trim())return;await axios.post('/api/categories
 async function del(id){await axios.delete(`/api/categories/${id}`);list.value=list.value.filter(c=>c.id!==id)}
 </script>
 <style scoped>
-.wrap{max-width:500px;margin:0 auto}.title{font-size:18px;font-weight:700;color:var(--text);margin:0 0 16px}
 .add-row{display:flex;gap:8px;margin-bottom:16px}
 </style>

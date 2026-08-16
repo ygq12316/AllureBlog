@@ -1,9 +1,12 @@
 <template>
-  <div class="wrap">
-    <h3 class="title">博客设置</h3>
+  <div class="wrap page-narrow">
+    <div class="page-head">
+      <h2>博客设置</h2>
+      <div class="page-head-actions" />
+    </div>
 
     <!-- 裁剪模式 -->
-    <div v-if="cropMode" class="crop-section">
+    <div v-if="cropMode" class="panel crop-section">
       <div class="crop-frame" @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag"
         @touchstart="startDrag" @touchmove="onDrag" @touchend="endDrag" @wheel.prevent="onWheel">
         <img :src="cropSrc" class="crop-img" :style="cropImgStyle" />
@@ -21,7 +24,7 @@
     </div>
 
     <!-- 正常模式 -->
-    <div v-else class="form">
+    <div v-else class="panel form">
       <div class="field">
         <label>作者昵称</label>
         <n-input v-model:value="form.author_name" placeholder="作者昵称" size="small" />
@@ -117,8 +120,6 @@ async function save() {
 </script>
 
 <style scoped>
-.wrap { max-width: 400px; margin: 0 auto; }
-.title { font-size: 17px; font-weight: 700; color: var(--text); margin: 0 0 24px; }
 .form { display: flex; flex-direction: column; gap: 16px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12px; color: var(--muted); }
