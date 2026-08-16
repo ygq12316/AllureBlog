@@ -36,7 +36,10 @@ services:
       context: ./agent
       dockerfile: Dockerfile
     container_name: blog-agent
-    env_file: .env
+    env_file: ./agent/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - BLOG_API_BASE=http://app:8080
     depends_on:
       - redis
     restart: unless-stopped
