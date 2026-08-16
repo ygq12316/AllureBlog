@@ -1,12 +1,14 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useVisitor } from './useVisitor'
 
 // 笔墨精灵聊天 — WebSocket 状态机（纯逻辑，视图在 FairyChat.vue）
 export function useFairyChat() {
-  const { visitor, init } = useVisitor()
-  const status = ref('idle') // idle | connecting | ready | offline
+  const { visitor, account, init } = useVisitor()
+  const status = ref('idle') // idle | connecting | ready | need-login | offline
   const messages = ref([])
   const streaming = ref(false)
+  const remaining = ref(null) // 今日剩余对话次数（服务端在 auth_result/done 带回）
+  const retrieving = ref(false) // 精灵正在检索博客
   let ws = null
   let pingTimer = null
 
@@ -18,19 +20,36 @@ export function useFairyChat() {
 
   function handle(m) {
     if (m.type === 'auth_result') {
+      if (!m.success) {
+        // 未登录账号 / 身份验证失败：提示后置离线
+        messages.value.push({ role: 'system', content: m.greeting || '请先登录后再与精灵对话' })
+        status.value = 'offline'
+        return
+      }
       status.value = 'ready'
       if (m.greeting) messages.value.push({ role: 'fairy', content: m.greeting, done: true })
+      if (typeof m.remaining === 'number') remaining.value = m.remaining
       startPing()
     } else if (m.type === 'token') {
+      retrieving.value = false
       let b = openFairy(true)
       if (!b) { b = { role: 'fairy', content: '', done: false }; messages.value.push(b) }
       b.content += m.content
+    } else if (m.type === 'tool_call') {
+      retrieving.value = true // 检索中，首个 token 到来自动消除
     } else if (m.type === 'done') {
       const b = openFairy(false)
-      if (b) { b.done = true; b.interrupted = !!m.interrupted }
+      if (b) {
+        b.done = true
+        b.interrupted = !!m.interrupted
+        if (typeof m.final === 'string') b.content = m.final // 服务端过滤后的定稿
+      }
+      if (typeof m.remaining === 'number') remaining.value = m.remaining
+      retrieving.value = false
       streaming.value = false
-    } else if (m.type === 'rejected' || m.type === 'error') {
+    } else if (m.type === 'error') {
       messages.value.push({ role: 'system', content: m.display || '精灵暂时无法回应' })
+      if (m.code === 'limit_exceeded') remaining.value = 0
       streaming.value = false
     }
     // pong 仅保活，忽略
@@ -39,6 +58,8 @@ export function useFairyChat() {
   async function connect() {
     if (status.value === 'connecting' || status.value === 'ready') return
     await init() // uuid 由 useVisitor 自动生成并持久化，此处必可得
+    // 仅账号登录用户可聊（登录后 visitor.uuid 即账号身份，服务端校验 username）
+    if (!account.value) { status.value = 'need-login'; return }
     if (!visitor.value) return
     status.value = 'connecting'
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -96,6 +117,7 @@ export function useFairyChat() {
     const b = openFairy(false)
     if (b) { b.done = true; b.content += '（连接中断）' }
     streaming.value = false
+    retrieving.value = false
     ws = null
   }
 
@@ -109,5 +131,11 @@ export function useFairyChat() {
     status.value = 'idle'
   }
 
-  return { status, messages, streaming, connect, send, interrupt, disconnect }
+  // 登录/登出联动：登录成功自动重连，登出即断开
+  watch(account, v => {
+    if (v && status.value === 'need-login') connect()
+    if (!v && status.value !== 'idle') disconnect()
+  })
+
+  return { status, messages, streaming, remaining, retrieving, connect, send, interrupt, disconnect }
 }

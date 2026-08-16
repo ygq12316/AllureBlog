@@ -12,6 +12,7 @@
         <n-icon :component="BrushIcon" size="16" color="var(--gold)" />
         <span class="fairy-title">笔墨精灵</span>
         <span class="fairy-status" :class="'fairy-status--' + status" :title="statusTitle" />
+        <span v-if="status === 'ready' && remaining !== null" class="fairy-quota">今日余 {{ remaining }} 次</span>
         <button class="fairy-close" @click="visible = false"><n-icon :component="CloseIcon" size="14" /></button>
       </div>
 
@@ -20,6 +21,9 @@
           精灵云游去了… <button class="fairy-link" @click="connect">重新召唤</button>
         </div>
         <div v-else-if="status === 'connecting'" class="fairy-sys">精灵正在苏醒…</div>
+        <div v-else-if="status === 'need-login'" class="fairy-sys">
+          登录后可与笔墨精灵对话 <button class="fairy-link" @click="openLogin">去登录</button>
+        </div>
 
         <div v-for="(m, i) in messages" :key="i" class="fairy-row" :class="{ 'fairy-row--me': m.role === 'user' }">
           <div v-if="m.role === 'system'" class="fairy-sys">{{ m.content }}</div>
@@ -28,6 +32,7 @@
             <div v-if="m.done && m.interrupted" class="fairy-cut">（笔墨言未尽…）</div>
           </div>
         </div>
+        <div v-if="retrieving" class="fairy-sys">精灵翻阅卷轴中…</div>
       </div>
 
       <div class="fairy-input">
@@ -46,9 +51,11 @@
 import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { BrushOutline, CloseOutline } from '@vicons/ionicons5'
 import { useFairyChat } from '../composables/useFairyChat'
+import { useVisitor } from '../composables/useVisitor'
 
 const BrushIcon = BrushOutline, CloseIcon = CloseOutline
-const { status, messages, streaming, connect, send, interrupt, disconnect } = useFairyChat()
+const { status, messages, streaming, remaining, retrieving, connect, send, interrupt, disconnect } = useFairyChat()
+const { openLogin } = useVisitor()
 
 const visible = ref(false)
 const unread = ref(false)
@@ -56,7 +63,7 @@ const draft = ref('')
 const listEl = ref(null)
 let follow = true // 流式期间自动跟随滚动，用户上滚则暂停
 
-const statusTitle = { idle: '未连接', connecting: '连接中', ready: '在线', offline: '离线' }
+const statusTitle = { idle: '未连接', connecting: '连接中', ready: '在线', 'need-login': '未登录', offline: '离线' }
 
 function open() {
   visible.value = true
@@ -149,8 +156,9 @@ onUnmounted(disconnect)
 .fairy-status { width: 8px; height: 8px; border-radius: 50%; margin-left: 2px; background: var(--muted); }
 .fairy-status--ready { background: var(--gold); animation: fairy-pulse 2s infinite; }
 @keyframes fairy-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+.fairy-quota { margin-left: auto; font-size: 11px; color: var(--muted); }
 .fairy-close {
-  margin-left: auto; border: none; background: none; cursor: pointer;
+  border: none; background: none; cursor: pointer;
   color: var(--muted); display: flex; padding: 4px; border-radius: 4px;
 }
 .fairy-close:hover { color: var(--gold); }
