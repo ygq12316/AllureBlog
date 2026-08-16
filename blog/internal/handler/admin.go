@@ -453,10 +453,14 @@ func (h *AdminHandler) Stats(c *gin.Context) {
 	_, articleTotal, _ := h.articleSvc.ListAll(1, 1)
 	_, noteTotal, _ := h.noteSvc.ListAll(1, 1)
 	categories, _ := h.categoryRepo.ListAll()
+	commentTotal, _ := h.commentRepo.CountAll()
+	visitorTotal, _ := h.visitorRepo.CountAll()
 	c.JSON(http.StatusOK, gin.H{
 		"article_count":  articleTotal,
 		"note_count":     noteTotal,
 		"category_count": len(categories),
+		"comment_count":  commentTotal,
+		"visitor_count":  visitorTotal,
 	})
 }
 

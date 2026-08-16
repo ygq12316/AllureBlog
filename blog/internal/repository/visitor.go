@@ -88,6 +88,12 @@ func (r *VisitorRepo) ListAll() ([]model.Visitor, error) {
 	return visitors, err
 }
 
+func (r *VisitorRepo) CountAll() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Visitor{}).Count(&count).Error
+	return count, err
+}
+
 func (r *VisitorRepo) Update(v *model.Visitor) error {
 	return r.db.Save(v).Error
 }

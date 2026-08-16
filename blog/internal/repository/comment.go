@@ -46,3 +46,9 @@ func (r *CommentRepo) CountByNote(noteID uint) (int64, error) {
 	err := r.db.Model(&model.Comment{}).Where("note_id = ?", noteID).Count(&count).Error
 	return count, err
 }
+
+func (r *CommentRepo) CountAll() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Comment{}).Count(&count).Error
+	return count, err
+}
