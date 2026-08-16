@@ -31,7 +31,7 @@
 - Modify: `blog/internal/repository/note.go:21-36`（ListPublished / ListAll）
 - Create: `blog/internal/repository/note_test.go`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `blog/internal/repository/note_test.go`：
 
@@ -131,7 +131,7 @@ func TestNoteRepoListPublishedCommentCount(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go test ./internal/repository/ -run TestNoteRepo -count=1 -v
@@ -139,7 +139,7 @@ cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass 
 
 期望：FAIL，编译错误 `n.CommentCount undefined`（字段尚不存在）。
 
-- [ ] **Step 3: 加 model 字段**
+- [x] **Step 3: 加 model 字段**
 
 `blog/internal/model/model.go` 的 Note 结构体末尾（CreatedAt 之后）加一行：
 
@@ -156,7 +156,7 @@ type Note struct {
 }
 ```
 
-- [ ] **Step 4: 改两个列表查询**
+- [x] **Step 4: 改两个列表查询**
 
 `blog/internal/repository/note.go` 的 ListPublished / ListAll 整体替换为：
 
@@ -182,11 +182,11 @@ func (r *NoteRepo) ListAll(page, pageSize int) ([]model.Note, int64, error) {
 }
 ```
 
-- [ ] **Step 5: 运行确认通过**
+- [x] **Step 5: 运行确认通过**
 
 同 Step 2 命令。期望：两个测试 PASS。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add blog/internal/model/model.go blog/internal/repository/note.go blog/internal/repository/note_test.go
@@ -203,7 +203,7 @@ git commit -m "feat: 随笔列表返回 comment_count（子查询，迁移不建
 - Modify: `blog/internal/handler/admin.go:452-461`（Stats）
 - Create: `blog/internal/repository/stats_count_test.go`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 创建 `blog/internal/repository/stats_count_test.go`：
 
@@ -295,7 +295,7 @@ func newTestDB(t *testing.T) *gorm.DB {
 
 注：`model.Visitor` 字段以 `blog/internal/model/visitor.go` 实际定义为准（UUID/Nickname/AvatarStyle 是公开端注册一直在写的字段）。
 
-- [ ] **Step 2: 运行确认失败**
+- [x] **Step 2: 运行确认失败**
 
 ```bash
 cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go test ./internal/repository/ -run 'CountAll' -count=1 -v
@@ -303,7 +303,7 @@ cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass 
 
 期望：FAIL，编译错误 `cr.CountAll undefined` / `vr.CountAll undefined`。
 
-- [ ] **Step 3: 实现两个 CountAll**
+- [x] **Step 3: 实现两个 CountAll**
 
 `blog/internal/repository/comment.go` 末尾追加：
 
@@ -325,7 +325,7 @@ func (r *VisitorRepo) CountAll() (int64, error) {
 }
 ```
 
-- [ ] **Step 4: Stats handler 接入**
+- [x] **Step 4: Stats handler 接入**
 
 `blog/internal/handler/admin.go` 的 `Stats` 整体替换为：
 
@@ -346,7 +346,7 @@ func (h *AdminHandler) Stats(c *gin.Context) {
 }
 ```
 
-- [ ] **Step 5: 全量后端测试 + vet**
+- [x] **Step 5: 全量后端测试 + vet**
 
 ```bash
 cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go test ./... -count=1 && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go vet ./...
@@ -354,7 +354,7 @@ cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass 
 
 期望：全部 PASS，vet 无输出。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add blog/internal/repository/comment.go blog/internal/repository/visitor.go blog/internal/repository/note_test.go blog/internal/repository/stats_count_test.go blog/internal/handler/admin.go
@@ -370,7 +370,7 @@ git commit -m "feat: /api/stats 增加 comment_count 与 visitor_count"
 - Modify: `blog/web/admin/src/App.vue`（挂 n-message-provider，供 useMessage 使用）
 - Modify: `blog/web/admin/src/layouts/AdminLayout.vue`（整文件重写）
 
-- [ ] **Step 0: App.vue 挂载 n-message-provider**
+- [x] **Step 0: App.vue 挂载 n-message-provider**
 
 后续编辑器/列表页用 `useMessage` 做失败提示，Naive UI 要求外层必须有 provider。`App.vue` 整文件替换为：
 
@@ -390,7 +390,7 @@ const themeOverrides = {
 </script>
 ```
 
-- [ ] **Step 1: index.html 追加后台规范类**
+- [x] **Step 1: index.html 追加后台规范类**
 
 在 `index.html` 的 `<style>` 块末尾（`.n-data-table .n-data-table-wrapper` 规则之后）追加：
 
@@ -413,7 +413,7 @@ const themeOverrides = {
 .editor-topbar-side { display: flex; align-items: center; gap: 10px; }
 ```
 
-- [ ] **Step 2: 重写 AdminLayout.vue 为侧边栏**
+- [x] **Step 2: 重写 AdminLayout.vue 为侧边栏**
 
 `blog/web/admin/src/layouts/AdminLayout.vue` 整文件替换为：
 
@@ -562,7 +562,7 @@ onUnmounted(() => { cancelAnimationFrame(animId); window.removeEventListener('re
 </style>
 ```
 
-- [ ] **Step 3: 构建验证**
+- [x] **Step 3: 构建验证**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -570,7 +570,7 @@ cd /e/pythonProject/web/blog/web/admin && npm run build
 
 期望：`✓ built` 无错误（路由里 CommentList 仍存在，本任务不动它）。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add blog/web/admin/index.html blog/web/admin/src/App.vue blog/web/admin/src/layouts/AdminLayout.vue
@@ -585,7 +585,7 @@ git commit -m "feat: 后台改为侧边栏布局（水墨金），新增统一�
 - Delete: `blog/web/admin/src/views/admin/CommentList.vue`
 - Modify: `blog/web/admin/src/router/index.js:35`
 
-- [ ] **Step 1: 移除路由**
+- [x] **Step 1: 移除路由**
 
 `blog/web/admin/src/router/index.js` 删除第 35 行：
 
@@ -593,13 +593,13 @@ git commit -m "feat: 后台改为侧边栏布局（水墨金），新增统一�
       { path: 'comments', name: 'AdminComments', component: () => import('../views/admin/CommentList.vue') },
 ```
 
-- [ ] **Step 2: 删除组件文件**
+- [x] **Step 2: 删除组件文件**
 
 ```bash
 git rm blog/web/admin/src/views/admin/CommentList.vue
 ```
 
-- [ ] **Step 3: 全仓确认无残留引用**
+- [x] **Step 3: 全仓确认无残留引用**
 
 ```bash
 grep -rn "CommentList\|AdminComments\|admin/comments" blog/web/admin/src/
@@ -607,7 +607,7 @@ grep -rn "CommentList\|AdminComments\|admin/comments" blog/web/admin/src/
 
 期望：无输出。（AdminLayout 菜单已在 Task 3 去掉 comments 项。）
 
-- [ ] **Step 4: 构建 + 提交**
+- [x] **Step 4: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -622,7 +622,7 @@ git commit -m "refactor: 移除全局评论页，评论改由随笔编辑页分�
 **Files:**
 - Modify: `blog/web/admin/src/views/admin/NoteEditor.vue`（整文件重写）
 
-- [ ] **Step 1: 整文件替换**
+- [x] **Step 1: 整文件替换**
 
 ```vue
 <template>
@@ -870,7 +870,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 2: 构建验证**
+- [x] **Step 2: 构建验证**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -878,7 +878,7 @@ cd /e/pythonProject/web/blog/web/admin && npm run build
 
 期望：`✓ built`。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add blog/web/admin/src/views/admin/NoteEditor.vue
@@ -892,7 +892,7 @@ git commit -m "feat: 随笔编辑器重构 — 顶栏对齐文章编辑器 + 右
 **Files:**
 - Modify: `blog/web/admin/src/views/admin/NoteList.vue`（整文件重写）
 
-- [ ] **Step 1: 整文件替换**
+- [x] **Step 1: 整文件替换**
 
 ```vue
 <template>
@@ -980,7 +980,7 @@ async function batchDel() {
 </style>
 ```
 
-- [ ] **Step 2: 构建验证 + 提交**
+- [x] **Step 2: 构建验证 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -996,7 +996,7 @@ git commit -m "feat: 随笔列表表格化，含评论数列（点击跳编辑�
 - Modify: `blog/web/admin/src/views/admin/ArticleEditor.vue`（顶栏类与发布加载态）
 - Modify: `blog/web/admin/src/views/admin/ArticleList.vue`（页头 + 面板）
 
-- [ ] **Step 1: ArticleEditor 顶栏统一**
+- [x] **Step 1: ArticleEditor 顶栏统一**
 
 `ArticleEditor.vue` 模板中 `<div class="topbar">` 改为全局规范类（`.editor-topbar`），发布按钮加 loading，字数计数类名对齐：
 
@@ -1052,7 +1052,7 @@ async function del() {
 .count { font-size: 13px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 ```
 
-- [ ] **Step 2: ArticleList 页头/面板规整**
+- [x] **Step 2: ArticleList 页头/面板规整**
 
 `ArticleList.vue` 模板整体替换为：
 
@@ -1076,7 +1076,7 @@ async function del() {
 
 script 部分 cols 里标题列渲染、其余保持原状；`batchDel` 加失败提示（`try/catch` + `useMessage`，与 Task 6 的 NoteList 同构）；scoped 样式整段删除（改用全局规范类）。
 
-- [ ] **Step 3: 构建 + 提交**
+- [x] **Step 3: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1091,7 +1091,7 @@ git commit -m "refactor: 文章编辑器/列表对齐后台统一规范（页头
 **Files:**
 - Modify: `blog/web/admin/src/views/admin/Dashboard.vue`
 
-- [ ] **Step 1: 统计卡升级**
+- [x] **Step 1: 统计卡升级**
 
 模板的统计区 `<div class="stats">` 改为：
 
@@ -1121,14 +1121,14 @@ const statList = computed(() => [
 
 （`BubblesIcon = ChatbubblesOutline`、`PeopleIcon = PeopleOutline`，与现有 `PersonIcon=PersonOutline` 同一行风格声明。`stats` 初值同步加 `comment_count: 0, visitor_count: 0`。）
 
-- [ ] **Step 2: 布局与样式调整**
+- [x] **Step 2: 布局与样式调整**
 
 - `.dash` 容器改为 `page-narrow`：`<div class="dash">` 保留，scoped 里 `.dash { max-width: 720px; margin: 0 auto; }`
 - `.stats` 改 3×2 网格：`grid-template-columns: repeat(3, 1fr);`
 - `.stat` 调整：`text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px;`
 - 「最近」两列卡片包 `.panel`：`.recent .col` 外层各包 `<div class="panel">`，`.col` 内边距去掉
 
-- [ ] **Step 3: 构建 + 提交**
+- [x] **Step 3: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1143,7 +1143,7 @@ git commit -m "feat: 仪表盘统计卡片化，新增评论/访客统计"
 **Files:**
 - Modify: `blog/web/admin/src/views/admin/DanmakuList.vue`（整文件重写）
 
-- [ ] **Step 1: 整文件替换**
+- [x] **Step 1: 整文件替换**
 
 ```vue
 <template>
@@ -1196,7 +1196,7 @@ async function del(id) {
 </script>
 ```
 
-- [ ] **Step 2: 构建 + 提交**
+- [x] **Step 2: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1211,7 +1211,7 @@ git commit -m "refactor: 弹幕列表表格化，对齐后台统一规范"
 **Files:**
 - Modify: `blog/web/admin/src/views/admin/Visitors.vue`（模板与列表部分重写，弹窗逻辑不动）
 
-- [ ] **Step 1: 模板替换**
+- [x] **Step 1: 模板替换**
 
 ```vue
 <template>
@@ -1238,7 +1238,7 @@ git commit -m "refactor: 弹幕列表表格化，对齐后台统一规范"
 </template>
 ```
 
-- [ ] **Step 2: script 列定义**
+- [x] **Step 2: script 列定义**
 
 script 里新增列（复用既有 `editVisitor`/`del`/`saveEdit` 函数与数据加载逻辑，不改动）：
 
@@ -1276,7 +1276,7 @@ const cols = [
 
 原模板的行循环与 `.row` 系列样式删除；`.edit-card`/`.edit-avatar` 样式保留。
 
-- [ ] **Step 3: 构建 + 提交**
+- [x] **Step 3: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1293,7 +1293,7 @@ git commit -m "refactor: 访客列表表格化，对齐后台统一规范"
 - Modify: `blog/web/admin/src/views/admin/Tags.vue`
 - Modify: `blog/web/admin/src/views/admin/Settings.vue`
 
-- [ ] **Step 1: Categories 模板替换**
+- [x] **Step 1: Categories 模板替换**
 
 ```vue
 <template>
@@ -1312,7 +1312,7 @@ git commit -m "refactor: 访客列表表格化，对齐后台统一规范"
 
 script 不动；scoped 样式只留 `.add-row { display: flex; gap: 8px; margin-bottom: 16px; }`。
 
-- [ ] **Step 2: Tags 模板替换**
+- [x] **Step 2: Tags 模板替换**
 
 ```vue
 <template>
@@ -1331,7 +1331,7 @@ script 不动；scoped 样式只留 `.add-row { display: flex; gap: 8px; margin-
 
 script 不动；scoped 样式只留 `.add-row`。
 
-- [ ] **Step 3: Settings 模板骨架替换**
+- [x] **Step 3: Settings 模板骨架替换**
 
 外层结构改为：
 
@@ -1358,7 +1358,7 @@ script 不动；scoped 样式只留 `.add-row`。
 
 script 与裁剪逻辑零改动；scoped 删除 `.wrap`/`.title`，`.form` 里补 `gap` 布局沿用。
 
-- [ ] **Step 4: 构建 + 提交**
+- [x] **Step 4: 构建 + 提交**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1373,7 +1373,7 @@ git commit -m "refactor: 分类/标签/设置页套用统一页头与面板规�
 **Files:**
 - Modify: `.claude/skills/run-blog/smoke.mjs`
 
-- [ ] **Step 1: 加 comment_count 断言**
+- [x] **Step 1: 加 comment_count 断言**
 
 在「评论 WebSocket 广播」断言（`ok('评论 WebSocket 广播', ...)`）之后插入：
 
@@ -1385,7 +1385,7 @@ ok('随笔列表 comment_count', typeof counted?.comment_count === 'number' && c
    `noteId=${noteId}, count=${counted?.comment_count}`);
 ```
 
-- [ ] **Step 2: 构建前端 + 启动后端**
+- [x] **Step 2: 构建前端 + 启动后端**
 
 ```bash
 cd /e/pythonProject/web/blog/web/admin && npm run build
@@ -1395,7 +1395,7 @@ sleep 16 && grep -E "已启动" /tmp/blog-server.log
 
 期望日志：`笔墨 · Ink & Code 已启动 → http://localhost:8080`。
 
-- [ ] **Step 3: 跑冒烟**
+- [x] **Step 3: 跑冒烟**
 
 ```bash
 node /e/pythonProject/web/.claude/skills/run-blog/smoke.mjs
@@ -1403,7 +1403,7 @@ node /e/pythonProject/web/.claude/skills/run-blog/smoke.mjs
 
 期望：全部 PASS（原 10 项 + 新增 `随笔列表 comment_count`），结尾「全部通过」。
 
-- [ ] **Step 4: 后台截图人工检查**
+- [x] **Step 4: 后台截图人工检查**
 
 ```bash
 "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless --disable-gpu \
@@ -1413,13 +1413,13 @@ node /e/pythonProject/web/.claude/skills/run-blog/smoke.mjs
 
 注：路由守卫无 token 会跳登录页，截图管理员页面前需先用脚本登录拿 token 写 localStorage——简化做法：先截图 `/login` 确认样式正常；核心交互（侧边栏/评论面板）请用户在浏览器人工过一遍。
 
-- [ ] **Step 5: 全量后端测试收尾**
+- [x] **Step 5: 全量后端测试收尾**
 
 ```bash
 cd /e/pythonProject/web/blog && JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go test ./... -count=1
 ```
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add .claude/skills/run-blog/smoke.mjs
