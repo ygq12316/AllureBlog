@@ -63,6 +63,14 @@ func main() {
 	// Public blog config
 	r.GET("/api/config", adminHandler.GetConfig)
 
+	// 笔墨精灵 agent 反向代理 — 浏览器同源连 /chat/ws 靠它转发（含 WebSocket）；
+	// 生产由 Caddy 先行拦截 /chat/*，正常不会走到这里
+	agentURL := os.Getenv("AGENT_URL")
+	if agentURL == "" {
+		agentURL = "http://localhost:8000"
+	}
+	r.Any("/chat/*path", handler.ChatProxy(agentURL))
+
 	// API routes - GET public, POST/PUT/DELETE protected
 	api := r.Group("/api")
 	{
