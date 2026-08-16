@@ -6,26 +6,44 @@
     </div>
     <div v-if="!notes.length" class="empty"><n-empty description="还没有随笔" /></div>
     <div v-else class="board">
-      <router-link v-for="(n, i) in pinned" :key="n.id" :to="'/notes/'+n.id" class="note"
-        :style="noteStyle(n.id, i)">
-        <div class="pin" />
-        <div class="tape" :class="'tape-'+((i*7+3)%4)" />
-        <div v-if="firstImg(n.images)" class="note-img"><img :src="firstImg(n.images)" loading="lazy" @error="e=>e.target.style.display='none'" /></div>
-        <div class="note-body" v-html="n.html" />
-        <time class="note-time">{{ rel(n.created_at) }}</time>
-      </router-link>
+      <div v-for="(n, i) in pinned" :key="n.id" class="note-wrap" :style="{ animationDelay: (i * 70) + 'ms' }">
+        <router-link :to="'/notes/'+n.id" class="note" :style="noteStyle(n.id, i)">
+          <div class="pin" />
+          <div class="tape" :class="'tape-'+((i*7+3)%4)" />
+          <div v-if="imgs(n.images).length" class="note-imgs" :class="'note-imgs--'+Math.min(imgs(n.images).length, 4)">
+            <div v-for="(u, j) in imgs(n.images).slice(0, 4)" :key="j" class="img-cell">
+              <img :src="u" loading="lazy" @error="e=>e.target.parentNode.style.display='none'" />
+              <span v-if="j === 3 && imgs(n.images).length > 4" class="img-more">+{{ imgs(n.images).length - 4 }}</span>
+            </div>
+          </div>
+          <div class="note-body" v-html="n.html" />
+          <div class="note-foot">
+            <time class="note-time">{{ rel(n.created_at) }}</time>
+            <span class="note-more">阅读全文 ›</span>
+          </div>
+        </router-link>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
 const notes = ref([])
+
+// 主题切换时重算纸色：暗色下软木板换深色纸，避免亮便签刺眼
+const darkMode = ref(document.documentElement.classList.contains('dark'))
+let themeObs = null
 onMounted(async () => {
+  themeObs = new MutationObserver(() => {
+    darkMode.value = document.documentElement.classList.contains('dark')
+  })
+  themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
   try { const { data } = await axios.get('/api/notes?per_page=100'); notes.value = data.notes || [] } catch {}
 })
+onUnmounted(() => themeObs?.disconnect())
 
 const pinned = computed(() => notes.value.slice(0, 12))
 
@@ -40,6 +58,16 @@ const paperColors = [
   { bg: '#f5f5f0', edge: '#e8e5d8', ink: '#4a4a3a' },
 ]
 
+// 暗色纸系：深纸、柔边、浅墨
+const paperColorsDark = [
+  { bg: '#3a342a', edge: '#4c4334', ink: '#d8cba8' },
+  { bg: '#3c2f2f', edge: '#4e3d3d', ink: '#d8bfb0' },
+  { bg: '#2f353c', edge: '#3d454e', ink: '#bcc8d8' },
+  { bg: '#2f3a32', edge: '#3d4c40', ink: '#b8d4c2' },
+  { bg: '#3a332a', edge: '#4c4234', ink: '#d4c4a4' },
+  { bg: '#34303c', edge: '#443e50', ink: '#ccc0dc' },
+]
+
 function hash(s, i) {
   let r = i * 17
   for (let c of s) r = (r << 5) - r + c.charCodeAt(0) | 0
@@ -47,7 +75,8 @@ function hash(s, i) {
 }
 
 function noteStyle(id, i) {
-  const c = paperColors[i % paperColors.length]
+  const colors = darkMode.value ? paperColorsDark : paperColors
+  const c = colors[i % colors.length]
   const h = hash(String(id), i)
   const rot = (h % 7) - 3
   const h2 = (h * 13 + 7) % 20
@@ -61,7 +90,7 @@ function noteStyle(id, i) {
   }
 }
 
-function firstImg(s) { return s ? s.split(',')[0]?.trim() || '' : '' }
+function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : [] }
 
 function rel(d) {
   const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
@@ -90,11 +119,20 @@ function rel(d) {
   align-content: start;
 }
 
+/* 便签挂位：入场动画与层级放在外包层，避免覆盖便签自身的随机旋转 */
+.note-wrap {
+  position: relative;
+  justify-self: center;
+  max-width: 280px; width: 100%;
+  animation: noteIn .5s cubic-bezier(.4, 0, .2, 1) both;
+}
+.note-wrap:hover { z-index: 10; }
+@keyframes noteIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
 /* 便签 */
 .note {
   position: relative;
-  max-width: 280px; width: 100%;
-  justify-self: center;
+  width: 100%;
   border: 2px solid;
   border-radius: 2px 2px 4px 4px;
   text-decoration: none;
@@ -107,8 +145,9 @@ function rel(d) {
 .note:hover {
   transform: scale(1.06) rotate(0deg) !important;
   box-shadow: 4px 8px 24px rgba(0, 0, 0, .15);
-  z-index: 10;
 }
+.note:active { transform: scale(1.02) rotate(0deg) !important; }
+.note:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 /* 图钉 */
 .pin {
@@ -134,34 +173,65 @@ function rel(d) {
 .tape-2 { top: -7px; left: 50%; transform: translateX(-50%) rotate(-8deg); width: 28px; }
 .tape-3 { top: -4px; right: 28px; transform: rotate(-25deg); width: 30px; }
 
-.note-img {
-  width: 100%;
-  max-height: 45%;
-  overflow: hidden;
-  border-radius: 2px;
+/* 多图网格：固定纵横比，加载不跳动 */
+.note-imgs {
+  display: grid; gap: 3px;
   margin-bottom: 8px;
   flex-shrink: 0;
 }
-.note-img img {
-  width: 100%;
-  display: block;
-  object-fit: cover;
+.note-imgs--2, .note-imgs--4 { grid-template-columns: 1fr 1fr; }
+.note-imgs--3 { grid-template-columns: repeat(3, 1fr); }
+.img-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, .04);
 }
+.note-imgs--1 .img-cell { aspect-ratio: 4 / 3; }
+.img-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 第 4 格叠加剩余张数 */
+.img-more {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .45);
+  color: #fff; font-size: 15px; font-weight: 600;
+}
+
 .note-body {
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.65;
   display: -webkit-box;
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   flex: 0 0 auto;
 }
-.note-time {
-  font-size: 10px;
-  opacity: .6;
+
+/* 底部信息条：左时间、右阅读引导 */
+.note-foot {
   margin-top: auto;
-  flex-shrink: 0;
-  text-align: right;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, currentColor 25%, transparent);
+}
+.note-time { font-size: 10px; opacity: .65; }
+.note-more {
+  font-size: 11px; font-weight: 600;
+  opacity: 0; transform: translateX(-4px);
+  transition: opacity .2s, transform .2s;
+}
+.note:hover .note-more,
+.note:focus-visible .note-more { opacity: .9; transform: none; }
+/* 触屏无 hover，常显弱化版 */
+@media (hover: none) {
+  .note-more { opacity: .55; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-wrap { animation: none; }
+  .note, .note-more { transition: none; }
+  .note:hover, .note:active { transform: none; }
 }
 </style>

@@ -45,6 +45,7 @@ function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 .list-empty{display:flex;align-items:center;gap:8px;justify-content:center;padding:40px 0;font-size:13px;color:var(--muted)}
 .list-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--card-border);animation:fadeUp .5s ease-out both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.list-item{animation:none}}
 .item-icon{margin-top:2px;color:var(--gold)}.item-date{font-size:11px;color:var(--gold);white-space:nowrap;min-width:40px}
 .item-main{flex:1;min-width:0}.item-title{font-size:clamp(15px,1.3vw,18px);font-weight:700;color:var(--text);text-decoration:none;display:block;margin-bottom:4px}.item-title:hover{color:var(--gold)}
 .item-tags{display:flex;gap:4px;flex-wrap:wrap}.item-tag{font-size:11px;padding:2px 8px;background:var(--tag-bg);color:var(--text2);border:1px solid var(--border);border-radius:2px}
