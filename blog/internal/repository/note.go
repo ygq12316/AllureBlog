@@ -23,7 +23,8 @@ func (r *NoteRepo) ListPublished(page, pageSize int) ([]model.Note, int64, error
 	var total int64
 	q := r.db.Model(&model.Note{}).Where("is_published = ?", true)
 	q.Count(&total)
-	err := q.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notes).Error
+	err := q.Select("notes.*, (SELECT COUNT(*) FROM comments WHERE comments.note_id = notes.id) AS comment_count").
+		Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notes).Error
 	return notes, total, err
 }
 
@@ -31,6 +32,8 @@ func (r *NoteRepo) ListAll(page, pageSize int) ([]model.Note, int64, error) {
 	var notes []model.Note
 	var total int64
 	r.db.Model(&model.Note{}).Count(&total)
-	err := r.db.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notes).Error
+	err := r.db.Model(&model.Note{}).
+		Select("notes.*, (SELECT COUNT(*) FROM comments WHERE comments.note_id = notes.id) AS comment_count").
+		Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notes).Error
 	return notes, total, err
 }

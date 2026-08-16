@@ -151,8 +151,8 @@ type Note struct {
 	Images      string    `json:"images"` // comma-separated URLs, max 9
 	IsPublished bool      `gorm:"default:false" json:"is_published"`
 	CreatedAt   time.Time `json:"created_at"`
-	// CommentCount 由列表查询的子查询填充，不落库（-:migration 跳过建列，读写正常）
-	CommentCount int64 `json:"comment_count" gorm:"-:migration"`
+	// CommentCount 由列表查询的子查询填充（-> 只读禁写 + -:migration 跳过建列）
+	CommentCount int64 `json:"comment_count" gorm:"->;-:migration"`
 }
 ```
 
