@@ -1,4 +1,3 @@
-import fakeredis.aioredis
 import httpx
 import pytest
 from fastapi import FastAPI, WebSocket
@@ -27,7 +26,7 @@ class FakeAgent:
 
 def make_client(fake_agent, visitor, monkeypatch):
     app = FastAPI()
-    store = ChatStore(redis=fakeredis.aioredis.FakeRedis(decode_responses=True))
+    store = ChatStore()  # 进程内存实现，测试天然隔离
     handler = ChatHandler(agent=fake_agent, store=store)
 
     async def fake_fetch(self, uuid, client=None):

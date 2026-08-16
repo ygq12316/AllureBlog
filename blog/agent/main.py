@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
     # 清理
     logger.info("笔墨精灵正在休憩...")
-    await store.close()
+    store.close()
 
 
 app = FastAPI(

@@ -10,9 +10,6 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
 
-    # Redis（多轮记忆 + 每日计数）
-    redis_url: str = "redis://localhost:6379"
-
     # Go 博客后端（登录校验 + 标题检索）
     blog_api_base: str = "http://localhost:8080"
 

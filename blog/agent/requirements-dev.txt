@@ -1,0 +1,4 @@
+# 测试/开发依赖 — 本机与 CI 用，不进生产镜像（见 requirements.txt）
+-r requirements.txt
+pytest>=8.0.0
+pytest-asyncio>=0.25.0

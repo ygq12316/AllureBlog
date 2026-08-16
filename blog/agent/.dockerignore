@@ -1,0 +1,10 @@
+# 密钥绝不入镜像（生产从 compose env_file 注入）
+.env
+
+# 测试与开发产物不进生产镜像
+tests/
+pytest.ini
+requirements-dev.txt
+__pycache__/
+*.pyc
+.venv/

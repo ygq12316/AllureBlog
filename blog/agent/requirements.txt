@@ -1,12 +1,7 @@
-# 运行依赖
+# 运行依赖（生产镜像只装这些）
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
-redis>=5.2.0
 pydantic>=2.10.0
 pydantic-settings>=2.7.0
 openai>=1.60.0
 httpx>=0.28.0
-# 测试依赖（生产镜像也会装，纯 Python 小包，保持单文件简化管理）
-pytest>=8.0.0
-pytest-asyncio>=0.25.0
-fakeredis>=2.26.0
