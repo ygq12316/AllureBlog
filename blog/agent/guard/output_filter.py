@@ -1,6 +1,6 @@
 """输出过滤 — 纯函数，打码隐私信息、修正角色破坏性开头"""
-import re
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 

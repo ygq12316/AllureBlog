@@ -1,9 +1,9 @@
+import fakeredis.aioredis
+import httpx
 import pytest
 from fastapi import FastAPI, WebSocket
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
-
-import fakeredis.aioredis
 
 from memory.chat_store import ChatStore
 from ws.handler import ChatHandler
@@ -25,15 +25,16 @@ class FakeAgent:
             yield e
 
 
-def make_client(fake_agent, visitor):
+def make_client(fake_agent, visitor, monkeypatch):
     app = FastAPI()
     store = ChatStore(redis=fakeredis.aioredis.FakeRedis(decode_responses=True))
     handler = ChatHandler(agent=fake_agent, store=store)
 
-    async def fake_fetch(self, uuid):
+    async def fake_fetch(self, uuid, client=None):
         return visitor
 
-    ChatHandler._fetch_visitor = fake_fetch  # 打桩登录校验（实例方法级）
+    # monkeypatch 打桩登录校验，用例结束自动还原（不污染其它用例的类属性）
+    monkeypatch.setattr(ChatHandler, "_fetch_visitor", fake_fetch)
 
     @app.websocket("/chat/ws")
     async def ws_endpoint(ws: WebSocket):
@@ -51,9 +52,9 @@ def recv_until(ws, msg_type, limit=20):
     raise AssertionError(f"未收到 {msg_type}")
 
 
-def test_anonymous_visitor_rejected():
+def test_anonymous_visitor_rejected(monkeypatch):
     agent = FakeAgent([])
-    client, _ = make_client(agent, ANON_VISITOR)
+    client, _ = make_client(agent, ANON_VISITOR, monkeypatch)
     with client.websocket_connect("/chat/ws") as ws:
         ws.send_json({"type": "auth", "visitor_uuid": "anon1", "visitor_name": "x"})
         result = ws.receive_json()
@@ -64,12 +65,12 @@ def test_anonymous_visitor_rejected():
             ws.receive_json()  # 服务端随后关闭连接
 
 
-def test_account_visitor_chat_round_persists_history():
+def test_account_visitor_chat_round_persists_history(monkeypatch):
     agent = FakeAgent([
         {"event": "token", "text": "幸会"},
         {"event": "token", "text": "，久仰"},
     ])
-    client, store = make_client(agent, ACCOUNT_VISITOR)
+    client, store = make_client(agent, ACCOUNT_VISITOR, monkeypatch)
     with client.websocket_connect("/chat/ws") as ws:
         ws.send_json({"type": "auth", "visitor_uuid": "acct1", "visitor_name": "lin"})
         result = ws.receive_json()
@@ -97,9 +98,9 @@ def test_account_visitor_chat_round_persists_history():
     ]
 
 
-def test_daily_limit_exceeded():
+def test_daily_limit_exceeded(monkeypatch):
     agent = FakeAgent([{"event": "token", "text": "答"}])
-    client, _ = make_client(agent, ACCOUNT_VISITOR)
+    client, _ = make_client(agent, ACCOUNT_VISITOR, monkeypatch)
     with client.websocket_connect("/chat/ws") as ws:
         ws.send_json({"type": "auth", "visitor_uuid": "acct1"})
         ws.receive_json()
@@ -115,9 +116,9 @@ def test_daily_limit_exceeded():
         assert "笔墨已尽" in err["display"]
 
 
-def test_sensitive_input_short_circuits():
+def test_sensitive_input_short_circuits(monkeypatch):
     agent = FakeAgent([])  # 不应被调用
-    client, _ = make_client(agent, ACCOUNT_VISITOR)
+    client, _ = make_client(agent, ACCOUNT_VISITOR, monkeypatch)
     with client.websocket_connect("/chat/ws") as ws:
         ws.send_json({"type": "auth", "visitor_uuid": "acct1"})
         ws.receive_json()
@@ -127,12 +128,12 @@ def test_sensitive_input_short_circuits():
     assert agent.seen_history is None  # agent 未被触达
 
 
-def test_tool_call_event_forwarded():
+def test_tool_call_event_forwarded(monkeypatch):
     agent = FakeAgent([
         {"event": "tool_call", "name": "search_blog", "args": '{"keyword": ""}'},
         {"event": "token", "text": "博客里有…"},
     ])
-    client, _ = make_client(agent, ACCOUNT_VISITOR)
+    client, _ = make_client(agent, ACCOUNT_VISITOR, monkeypatch)
     with client.websocket_connect("/chat/ws") as ws:
         ws.send_json({"type": "auth", "visitor_uuid": "acct1"})
         ws.receive_json()
@@ -140,3 +141,25 @@ def test_tool_call_event_forwarded():
         tc = recv_until(ws, "tool_call")
         assert tc["name"] == "search_blog"
         recv_until(ws, "done")
+
+
+async def test_fetch_visitor_status_semantics():
+    """登录校验的返回值语义：200→访客 dict；404→{}（未登录）；5xx/网络错→None（fail-closed）"""
+    handler = ChatHandler(agent=FakeAgent([]), store=None)
+
+    def transport(request: httpx.Request) -> httpx.Response:
+        tail = request.url.path.rsplit("/", 1)[-1]
+        if tail == "ok":
+            return httpx.Response(200, json={"visitor": ACCOUNT_VISITOR})
+        if tail == "anon":
+            return httpx.Response(200, json={"visitor": ANON_VISITOR})
+        if tail == "missing":
+            return httpx.Response(404, json={"error": "未找到"})
+        return httpx.Response(500, json={"error": "boom"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(transport), timeout=3)
+    assert await handler._fetch_visitor("ok", client=client) == ACCOUNT_VISITOR
+    assert await handler._fetch_visitor("anon", client=client) == ANON_VISITOR
+    assert await handler._fetch_visitor("missing", client=client) == {}   # 404 → 未登录
+    assert await handler._fetch_visitor("boom", client=client) is None   # 5xx → fail-closed
+    await client.aclose()

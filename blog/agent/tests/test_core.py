@@ -1,7 +1,5 @@
 from types import SimpleNamespace as NS
 
-import pytest
-
 from agent.core import SYSTEM_PROMPT, BiMoAgent
 
 

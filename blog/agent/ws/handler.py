@@ -84,16 +84,24 @@ class ChatHandler:
 
     # ── 登录校验 ──
 
-    async def _fetch_visitor(self, uuid: str) -> dict | None:
-        """查 Go 后端访客记录。返回访客 dict；网络/服务异常返回 None（fail-closed）。"""
+    async def _fetch_visitor(self, uuid: str, client: httpx.AsyncClient | None = None) -> dict | None:
+        """查 Go 后端访客记录。返回访客 dict；404 视作未登录访客（{}）；
+        网络/服务故障（含 5xx）返回 None（fail-closed，auth_failed）。"""
+        own = client is None
+        if client is None:
+            client = httpx.AsyncClient(timeout=3)
         try:
-            async with httpx.AsyncClient(timeout=3) as client:
-                r = await client.get(f"{settings.blog_api_base}/api/visitor/{uuid}")
+            r = await client.get(f"{settings.blog_api_base}/api/visitor/{uuid}")
         except httpx.HTTPError as e:
             logger.warning("[auth] 博客后端不可达: %s", e)
             return None
+        finally:
+            if own:
+                await client.aclose()
+        if r.status_code == 404:
+            return {}  # 记录不存在 → 未登录访客，而非服务故障
         if r.status_code != 200:
-            return {}  # 记录不存在（404 等）视作未登录访客，而非服务故障
+            return None  # 5xx 等服务故障 → fail-closed
         return r.json().get("visitor") or {}
 
     @staticmethod

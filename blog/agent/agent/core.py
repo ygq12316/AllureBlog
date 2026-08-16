@@ -1,6 +1,6 @@
 """笔墨精灵 Agent 核心 — 手写轻量循环（openai SDK 流式 + 工具调用，无框架）"""
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI
 
