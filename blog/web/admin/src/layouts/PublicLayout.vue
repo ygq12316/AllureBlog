@@ -112,7 +112,7 @@ onUnmounted(() => { cancelAnimationFrame(animId); window.removeEventListener('re
 .nav-link:hover { color: var(--gold); }
 .nav-link--active { color: var(--gold); font-weight: 600; }
 .nav-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.nav-icon-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--muted); background: none; border: none; cursor: pointer; text-decoration: none; transition: color .2s, background-color .2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.nav-icon-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text2); background: none; border: none; cursor: pointer; text-decoration: none; transition: color .2s, background-color .2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .nav-icon-btn:hover { color: var(--gold); }
 .nav-burger { display: none; }
 .blog-main { flex: 1; position: relative; z-index: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: clamp(24px, 4vh, 48px) clamp(16px, 5vw, 64px); scroll-margin-top: 60px; }
