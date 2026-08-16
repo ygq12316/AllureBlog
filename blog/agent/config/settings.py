@@ -1,4 +1,3 @@
-# blog/agent/config/settings.py
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
@@ -11,13 +10,17 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
 
-    # Redis 短期记忆
+    # Redis（多轮记忆 + 每日计数）
     redis_url: str = "redis://localhost:6379"
 
-    # Agent 配置
-    short_memory_ttl_seconds: int = 1800  # 30 分钟
-    max_history_rounds: int = 5
-    max_retrieval_iterations: int = 8
+    # Go 博客后端（登录校验 + 标题检索）
+    blog_api_base: str = "http://localhost:8080"
+
+    # Agent 行为
+    short_memory_ttl_seconds: int = 1800  # 历史 30 分钟无对话即遗忘
+    max_history_rounds: int = 5           # 记忆窗口（轮）
+    max_tool_loops: int = 2               # 单轮对话最多几次工具调用机会
+    daily_message_limit: int = 10         # 每访客每日消息数
 
     # 日志
     log_level: str = "INFO"
