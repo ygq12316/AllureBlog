@@ -66,7 +66,7 @@ function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 @keyframes type{from{width:0}to{width:100%}}
 @keyframes appear{from{opacity:0}to{opacity:1}}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
-.main-content{display:flex;position:relative;z-index:2;padding:0;gap:clamp(24px,5vw,56px);min-height:50vh}
+.main-content{display:flex;position:relative;z-index:2;padding:0;gap:clamp(24px,5vw,56px);min-height:50vh;scroll-margin-top:68px}
 .profile-sidebar{width:clamp(160px,18vw,220px);flex-shrink:0}
 .profile-avatar{width:48px;height:48px;border-radius:50%;background:var(--tag-bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--gold)}
 .profile-img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin-bottom:12px}
@@ -90,4 +90,21 @@ function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 .post-tag{font-size:clamp(8px,.65vw,10px);padding:2px 8px;background:var(--tag-bg);color:var(--text2);border:1px solid var(--border);border-radius:2px}
 .post-card-more{text-align:center;margin-top:16px}.post-card-more a{font-size:clamp(11px,.9vw,13px);color:var(--gold);text-decoration:none}
 .empty-block{text-align:center;padding:60px 20px}.empty-icon{margin-bottom:12px;color:var(--gold)}.empty-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px}.empty-desc{font-size:13px;color:var(--muted)}
+/* 移动端：文章流置顶，侧栏压缩成横排简介条 */
+@media (max-width:768px){
+  .main-content{flex-direction:column;gap:20px}
+  .profile-sidebar{width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border-bottom:1px dotted var(--card-border);padding-bottom:16px}
+  .profile-img,.profile-avatar{margin-bottom:0}
+  .profile-name{margin-bottom:0}
+  .profile-bio{flex-basis:100%;margin-bottom:0}
+  .profile-divider{display:none}
+  .profile-stats,.profile-links{margin-bottom:0}
+}
+/* 减少动态效果：打字/弹跳/渐入动画停用，直接呈现终态 */
+@media (prefers-reduced-motion: reduce){
+  .hero-typing{animation:none;border-right:none;width:auto}
+  .hero-sub{animation:none;opacity:1}
+  .hero-arrow{animation:none}
+  .post-card{animation:none}
+}
 </style>

@@ -151,7 +151,7 @@ function onSelect(key) {
 
 <style scoped>
 .ua-wrap { display: flex; align-items: center; }
-.ua-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--tag-bg); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; overflow: hidden; transition: all .25s; }
+.ua-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--tag-bg); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; overflow: hidden; transition: border-color .25s, color .25s, transform .25s; }
 .ua-avatar:hover { border-color: var(--gold); color: var(--gold); transform: scale(1.05); }
 .ua-avatar--logged { border-color: var(--gold); }
 .ua-img { width: 100%; height: 100%; object-fit: cover; }
