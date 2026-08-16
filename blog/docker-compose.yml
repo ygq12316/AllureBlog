@@ -32,26 +32,13 @@ services:
     networks:
       - blog-net
 
+  # 短期记忆/日计数为进程内存实现（单 worker 运行），无需外部 Redis
   agent:
-    build:
-      context: ./agent
-      dockerfile: Dockerfile
+    image: allure12316/blog-agent:latest
     container_name: blog-agent
     env_file: ./agent/.env
     environment:
-      - REDIS_URL=redis://redis:6379
       - BLOG_API_BASE=http://app:8080
-    depends_on:
-      - redis
-    restart: unless-stopped
-    networks:
-      - blog-net
-
-  redis:
-    image: redis:7-alpine
-    container_name: blog-redis
-    volumes:
-      - redis-data:/data
     restart: unless-stopped
     networks:
       - blog-net
@@ -61,7 +48,6 @@ volumes:
   blog-uploads:
   caddy-data:
   caddy-config:
-  redis-data:
 
 networks:
   blog-net:
