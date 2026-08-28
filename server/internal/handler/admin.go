@@ -305,8 +305,8 @@ func (h *AdminHandler) DeleteTag(c *gin.Context) {
 
 // -- Upload --
 
-// UploadsDir 上传目录，main 与 UploadFile 共用的唯一来源（相对服务器工作目录）
-const UploadsDir = "web/static/uploads"
+// UploadsDir 上传目录，main 启动时按 web 根位置注入（相对服务器工作目录）
+var UploadsDir = "web/static/uploads"
 
 // 允许上传的图片扩展名（svg 可携带脚本，不放开）
 var allowedUploadExts = map[string]bool{

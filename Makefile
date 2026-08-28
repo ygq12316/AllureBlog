@@ -1,23 +1,23 @@
 .PHONY: run build test vet lint clean tidy
 
+# web 根由服务自探（仓库根 ./web，server/ 内回退 ../web），make 目标统一在根执行
 run:
-	go run ./cmd/server
+	cd server && go run ./cmd/server
 
 build:
-	go build -o blog.exe ./cmd/server
+	go build -o blog.exe ./server/cmd/server
 
-# 认证配置注入发生在 main 启动时（requireEnv），handler 包已无包级副作用
 test:
-	go test ./...
+	cd server && go test ./...
 
 vet:
-	go vet ./...
+	cd server && go vet ./...
 
 lint:
-	golangci-lint run
+	cd server && golangci-lint run
 
 clean:
 	rm -f blog.exe
 
 tidy:
-	go mod tidy
+	cd server && go mod tidy

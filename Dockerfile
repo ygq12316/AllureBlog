@@ -7,12 +7,12 @@ ENV http_proxy=$HTTP_PROXY https_proxy=$HTTPS_PROXY
 
 RUN npm config set registry https://registry.npmmirror.com
 
-WORKDIR /app/web/app
+WORKDIR /build/web
 
-COPY web/app/package.json ./
+COPY web/package.json ./
 RUN npm install
 
-COPY web/app/ ./
+COPY web/ ./
 RUN npm run build
 
 # ===== Stage 2: Compile Go backend =====
@@ -26,15 +26,12 @@ ENV GOPROXY=https://goproxy.cn,direct
 
 RUN apk add --no-cache gcc musl-dev
 
-WORKDIR /app
+WORKDIR /build/server
 
-COPY go.mod go.sum ./
+COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-COPY . .
-
-# Overlay Vue dist from stage 1 into Go source tree
-COPY --from=node-builder /app/web/app/dist web/app/dist
+COPY server/ ./
 
 RUN CGO_ENABLED=1 GOOS=linux go build -o /blog ./cmd/server
 
@@ -50,7 +47,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=go-builder /blog /app/blog
-COPY --from=node-builder /app/web/app/dist /app/web/app/dist
+COPY --from=node-builder /build/web/dist /app/web/dist
 
 RUN mkdir -p /app/web/static/uploads /app/data
 

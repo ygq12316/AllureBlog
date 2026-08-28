@@ -26,9 +26,16 @@ func requireEnv(key string) string {
 }
 
 func main() {
+	// 仓库根定位：生产/根目录启动 cwd 即根；开发 go run（cwd=server/）回退上级。
+	// db 与 web 静态资源的相对路径都从根算起，保证两种启动方式行为一致
+	root := "."
+	if _, err := os.Stat(filepath.Join(root, "web")); err != nil {
+		root = ".."
+	}
+
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "blog.db"
+		dbPath = filepath.Join(root, "blog.db")
 	}
 
 	db, err := database.InitDB(dbPath)
@@ -138,6 +145,8 @@ func main() {
 	}
 
 	// Serve uploaded files
+	webDir := filepath.Join(root, "web")
+	handler.UploadsDir = filepath.Join(webDir, "static", "uploads")
 	if err := os.MkdirAll(handler.UploadsDir, 0755); err != nil {
 		log.Fatal("创建上传目录失败:", err)
 	}
@@ -152,7 +161,7 @@ func main() {
 	})
 
 	// Serve Vue SPA static files
-	distDir := "web/app/dist"
+	distDir := filepath.Join(webDir, "dist")
 	r.Static("/assets", filepath.Join(distDir, "assets"))
 	r.StaticFile("/TagCloud.min.js", filepath.Join(distDir, "TagCloud.min.js"))
 	r.StaticFile("/favicon.ico", filepath.Join(distDir, "favicon.ico"))

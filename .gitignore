@@ -1,6 +1,6 @@
 # Node
 node_modules/
-web/app/dist/
+web/dist/
 
 # Go 构建产物
 *.exe
