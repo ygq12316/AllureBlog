@@ -2,7 +2,7 @@
 set -e
 
 # 部署目录可用环境变量覆盖
-DEPLOY_DIR="${DEPLOY_DIR:-/opt/blog/blog}"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/blog}"
 
 echo "=== Bimo Ink & Code Deploy ==="
 

@@ -25,3 +25,7 @@ docs/
 # Misc
 *.md
 seed.js
+
+# 仅 app 镜像需要 Go+前端，agent 与种子脚本不打包
+agent/
+scripts/

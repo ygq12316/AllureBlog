@@ -20,8 +20,8 @@ jobs:
       - name: Build and Push app
         uses: docker/build-push-action@v6
         with:
-          context: ./blog
-          file: ./blog/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
           tags: allure12316/blog:latest
 
@@ -40,7 +40,7 @@ jobs:
       - name: Build and Push agent
         uses: docker/build-push-action@v6
         with:
-          context: ./blog/agent
-          file: ./blog/agent/Dockerfile
+          context: ./agent
+          file: ./agent/Dockerfile
           push: true
           tags: allure12316/blog-agent:latest
