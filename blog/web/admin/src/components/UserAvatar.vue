@@ -45,7 +45,10 @@
 import { ref, computed, watch } from 'vue'
 import { PersonOutline } from '@vicons/ionicons5'
 import { useVisitor } from '../composables/useVisitor'
-import axios from 'axios'
+import { setToken, setAdminUser, hasAdminToken, clearAdminSession } from '../api/client'
+import { login } from '../api/auth'
+import { loginAccount, registerAccount } from '../api/visitors'
+import { dicebearUrl } from '../utils/avatar'
 
 const PersonIcon = PersonOutline
 const { visitor, isSetUp, init, update, openSetup, loginVisible, closeLogin, account: accountUser, setAccount } = useVisitor()
@@ -62,9 +65,9 @@ const adminForm = ref({ admin_user: '', admin_pass: '' })
 async function doAdminLogin() {
   errorMsg.value = ''; adminLoading.value = true
   try {
-    const { data } = await axios.post('/api/login', { username: adminForm.value.admin_user, password: adminForm.value.admin_pass })
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('admin_user', data.user)
+    const data = await login(adminForm.value.admin_user, adminForm.value.admin_pass)
+    setToken(data.token)
+    setAdminUser(data.user)
     adminForm.value.admin_pass = ''
     showModal.value = false
     window.location.href = '/admin'
@@ -91,13 +94,10 @@ watch(() => visitor.value, (v) => {
 }, { deep: true })
 
 const userAvatar = computed(() => {
-  const v = visitor.value
+  const v = visitor.value, a = accountUser.value
   if (v?.avatar_url) return v.avatar_url
-  const a = accountUser.value
   if (a?.avatar_url) return a.avatar_url
-  const u = v?.uuid || a?.uuid || 'default'
-  const style = v?.avatar_style || a?.avatar_style || 'lorelei'
-  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(u)}`
+  return dicebearUrl(v?.avatar_style || a?.avatar_style || 'lorelei', v?.uuid || a?.uuid || 'default')
 })
 
 const dropdownOpts = computed(() => {
@@ -105,7 +105,7 @@ const dropdownOpts = computed(() => {
     { label: accountUser.value?.username || '用户', key: 'username' },
     { label: '资料管理', key: 'profile' },
   ]
-  if (localStorage.getItem('token')) {
+  if (hasAdminToken()) {
     opts.push({ label: '进入后台', key: 'admin' })
   }
   opts.push({ type: 'divider', key: 'd1' }, { label: '退出登录', key: 'logout' })
@@ -118,12 +118,12 @@ async function doSubmit() {
   submitting.value = true
   try {
     if (activeTab.value === 'login') {
-      const { data } = await axios.post('/api/visitor/login', { username: form.value.username, password: form.value.password })
+      const data = await loginAccount({ username: form.value.username, password: form.value.password })
       setAccount(data.visitor)
       await update({ uuid: data.visitor.uuid, nickname: data.visitor.nickname, avatar_style: data.visitor.avatar_style, avatar_url: data.visitor.avatar_url || '' })
     } else {
       const uuid = 'acct_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 8)
-      const { data } = await axios.post('/api/visitor/register', { uuid, username: form.value.username, password: form.value.password })
+      const data = await registerAccount({ uuid, username: form.value.username, password: form.value.password })
       setAccount(data.visitor)
       await update({ uuid: data.visitor.uuid, nickname: data.visitor.nickname, avatar_style: data.visitor.avatar_style, avatar_url: data.visitor.avatar_url || '' })
     }
@@ -139,8 +139,7 @@ async function doSubmit() {
 function onSelect(key) {
   if (key === 'logout') {
     setAccount(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('admin_user')
+    clearAdminSession()
   } else if (key === 'profile') {
     openSetup()
   } else if (key === 'admin') {

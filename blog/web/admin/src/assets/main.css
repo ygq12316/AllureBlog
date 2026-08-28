@@ -1,0 +1,62 @@
+/* 全局样式：主题变量（明/暗）、Naive UI 覆盖、后台统一规范。
+   原先内联在 index.html 的 <style>，收进这里经 Vite 处理并独立缓存。
+   字体引入（LXGW WenKai CDN）仍留在 index.html <head>。 */
+
+:root {
+  --bg: #fdfaf5;
+  --text: #5c4a3a;
+  --text2: #786951;
+  --muted: #a89880;
+  --card: #faf7f2;
+  --card-border: #e8ddd0;
+  --border: #d9cdb3;
+  --tag-bg: #f3ede3;
+  --gold: #b8944c;
+}
+html.dark {
+  --bg: #1e1b18;
+  --text: #d4c8b8;
+  --text2: #b8a898;
+  --muted: #8a7a68;
+  --card: #252220;
+  --card-border: #3d3830;
+  --border: #3d3830;
+  --tag-bg: #2a2520;
+  --gold: #d4b060;
+}
+body { background: var(--bg); color: var(--text); margin: 0; font-family: 'LXGW WenKai', KaiTi, serif; transition: background .3s, color .3s; }
+a { color: var(--gold); }
+
+/* Naive UI 统一背景——去掉所有白色区块 */
+.n-data-table { --n-merged-th-color: var(--bg); --n-merged-td-color: var(--bg); --n-merged-th-color-striped: var(--card); --n-merged-td-color-striped: var(--card); }
+.n-data-table .n-data-table-th { background: var(--bg) !important; }
+.n-data-table .n-data-table-td { background: var(--bg) !important; }
+.n-card { --n-color: var(--bg); --n-color-modal: var(--bg); --n-color-target: var(--bg); }
+.n-input { --n-color: var(--bg); --n-color-focus: var(--bg); }
+.n-base-selection { --n-color: var(--bg); }
+.n-select-menu .n-base-select-menu { --n-color: var(--bg); }
+.n-modal .n-card { --n-color: var(--bg); }
+.n-layout { background: transparent !important; }
+.n-layout-header { background: var(--bg) !important; }
+.n-layout-content { background: transparent !important; }
+.n-menu { --n-color: transparent; }
+.n-tag { --n-color: var(--tag-bg); }
+.n-button--default-type { --n-color: var(--tag-bg); }
+.n-data-table .n-data-table-wrapper { background: transparent; }
+
+/* === 后台统一规范 === */
+/* 页头：标题 + 主操作 */
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.page-head h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; }
+.page-head-actions { display: flex; gap: 8px; align-items: center; }
+/* 内容面板卡片 */
+.panel { background: var(--card); border: 1px solid var(--card-border); border-radius: 8px; padding: 20px; }
+.panel .n-data-table { --n-merged-th-color: var(--card); --n-merged-td-color: var(--card); }
+.panel .n-data-table .n-data-table-th { background: var(--card) !important; }
+.panel .n-data-table .n-data-table-td { background: var(--card) !important; }
+/* 页面容器宽度 */
+.page-narrow { max-width: 720px; margin: 0 auto; }
+.page-wide { max-width: 960px; margin: 0 auto; }
+/* 编辑器顶栏（两个编辑器共用同构） */
+.editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 10px; }
+.editor-topbar-side { display: flex; gap: 10px; align-items: center; }

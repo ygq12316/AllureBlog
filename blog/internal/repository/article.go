@@ -34,6 +34,19 @@ func (r *ArticleRepo) FindBySlug(slug string) (*model.Article, error) {
 	return &a, nil
 }
 
+// ExistsBySlug 查重不过滤发布状态（创建时 slug 冲突含草稿，避免触发 uniqueIndex 裸 500）
+func (r *ArticleRepo) ExistsBySlug(slug string) bool {
+	var count int64
+	r.db.Model(&model.Article{}).Where("slug = ?", slug).Count(&count)
+	return count > 0
+}
+
+func (r *ArticleRepo) CountAll() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Article{}).Count(&count).Error
+	return count, err
+}
+
 func (r *ArticleRepo) ListPublished(page, pageSize int) ([]model.Article, int64, error) {
 	var articles []model.Article
 	var total int64
@@ -92,12 +105,6 @@ func (r *ArticleRepo) GetAllTags() ([]model.Tag, error) {
 		return tags[i].Name < tags[j].Name
 	})
 	return tags, nil
-}
-
-func (r *ArticleRepo) ListAllPublished() ([]model.Article, error) {
-	var articles []model.Article
-	err := r.db.Where("is_published = ?", true).Order("created_at DESC").Find(&articles).Error
-	return articles, err
 }
 
 func (r *ArticleRepo) Search(q string, page, pageSize int) ([]model.Article, int64, error) {

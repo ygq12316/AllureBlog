@@ -24,17 +24,18 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { PersonOutline, TrashOutline } from '@vicons/ionicons5'
 import CommentSection from '../components/CommentSection.vue'
-import axios from 'axios'
+import { getNote } from '../api/notes'
+import { useAuthor } from '../composables/useAuthor'
+import { rel } from '../utils/format'
 const UserIcon=PersonOutline, TrashIcon=TrashOutline
-const route=useRoute(), note=ref(null), loading=ref(true), authorName=ref('Allure'), authorAvatarUrl=ref(''), authorSignature=ref('')
+const route=useRoute(), note=ref(null), loading=ref(true)
+const { author } = useAuthor()
+const authorName = computed(() => author.value.name), authorAvatarUrl = computed(() => author.value.avatar), authorSignature = computed(() => author.value.signature)
 const imgs=computed(()=>note.value?.images?note.value.images.split(',').filter(Boolean):[])
 onMounted(async()=>{
-  try{const{data}=await axios.get('/api/notes/'+route.params.id);note.value=data}catch(e){}
-  try{const{data}=await axios.get('/api/config');const cfg=data.config;authorName.value=cfg.author_name||'Allure';authorAvatarUrl.value=cfg.author_avatar||''}catch(e){}
-  try{const{data}=await axios.get('/api/visitor/admin_admin');authorSignature.value=data.visitor?.signature||''}catch(e){}
+  try{note.value=await getNote(route.params.id)}catch(e){}
   loading.value=false
 })
-function rel(d){const s=Math.floor((Date.now()-new Date(d).getTime())/1000);if(s<60)return'刚刚';if(s<3600)return Math.floor(s/60)+'分钟前';if(s<86400)return Math.floor(s/3600)+'小时前';if(s<2592000)return Math.floor(s/86400)+'天前';return new Date(d).toLocaleDateString('zh-CN')}
 </script>
 <style scoped>
 .page{padding:0;max-width:640px;margin:0 auto}.back{font-size:12px;color:var(--muted);text-decoration:none}.back:hover{color:var(--gold)}

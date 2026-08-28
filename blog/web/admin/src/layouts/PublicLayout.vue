@@ -48,13 +48,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { CreateOutline, SearchOutline, MenuOutline } from '@vicons/ionicons5'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 import VisitorSetup from '../components/VisitorSetup.vue'
 import FairyChat from '../components/FairyChat.vue'
 import { useVisitor } from '../composables/useVisitor'
+import { useParticles } from '../composables/useParticles'
 
 const { setupVisible, isSetUp, closeSetup, init } = useVisitor()
 
@@ -78,25 +79,8 @@ const navs = [
   { to: '/category', label: '分类' },
 ]
 
-// Particle system (same as before)
-const canvas = ref(null), glow = ref(null)
-let ctx, w, h, particles = [], mouse = { x: -999, y: -999 }, animId
-// 减少动态效果偏好：粒子只画一帧静景，不起动画循环
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-class Particle {
-  constructor() { this.reset(); this.y = Math.random() * h }
-  reset() { this.x = Math.random() * w; this.y = h + 10; this.size = Math.random() * 2.5 + 1; this.speedY = -(Math.random() * 0.4 + 0.15); this.speedX = (Math.random() - 0.5) * 0.3; this.opacity = Math.random() * 0.4 + 0.15; this.hue = Math.random() > 0.5 ? '184,148,76' : '120,105,81' }
-  update() { this.x += this.speedX; this.y += this.speedY; const dx = this.x - mouse.x, dy = this.y - mouse.y, dist = Math.sqrt(dx*dx+dy*dy); if (dist < 120) { const f = (120-dist)/120*1.5; this.x += (dx/dist)*f; this.y += (dy/dist)*f }; if (this.y < -10 || this.x < -10 || this.x > w+10) this.reset() }
-  draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fillStyle = `rgba(${this.hue},${this.opacity})`; ctx.fill() }
-}
-function drawFrame() { ctx.clearRect(0,0,w,h); particles.forEach(p=>p.draw()) }
-function initCanvas() { if (!canvas.value) return; ctx = canvas.value.getContext('2d'); resize(); particles = Array.from({length:55},()=>new Particle()); if (reduceMotion) { drawFrame(); return } animate() }
-function resize() { w = window.innerWidth; h = window.innerHeight; canvas.value.width = w; canvas.value.height = h; if (reduceMotion && particles.length) drawFrame() }
-function animate() { drawFrame(); particles.forEach(p=>p.update()); animId = requestAnimationFrame(animate) }
-function onMM(e) { mouse.x = e.clientX; mouse.y = e.clientY; if (glow.value) { glow.value.style.opacity='1'; glow.value.style.transform=`translate3d(${e.clientX-200}px,${e.clientY-200}px,0)` } }
-function onML() { mouse.x=-999; mouse.y=-999; if(glow.value) glow.value.style.opacity='0' }
-onMounted(() => { initCanvas(); window.addEventListener('resize',resize); window.addEventListener('mousemove',onMM); document.addEventListener('mouseleave',onML) })
-onUnmounted(() => { cancelAnimationFrame(animId); window.removeEventListener('resize',resize); window.removeEventListener('mousemove',onMM); document.removeEventListener('mouseleave',onML) })
+// 水墨粒子背景(与后台共用)
+const { canvas, glow } = useParticles()
 </script>
 
 <style>

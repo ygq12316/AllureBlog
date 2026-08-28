@@ -43,18 +43,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { StarOutline, ChevronDownOutline, PersonOutline, CreateOutline } from '@vicons/ionicons5'
 import DanmakuLayer from '../components/DanmakuLayer.vue'
-import axios from 'axios'
+import { listArticles } from '../api/articles'
+import { listNotes } from '../api/notes'
+import { useAuthor } from '../composables/useAuthor'
+import { fmtDate } from '../utils/format'
 const StarIcon=StarOutline, DownIcon=ChevronDownOutline, UserIcon=PersonOutline, EditIcon=CreateOutline
-const articles=ref([]), articleCount=ref(0), noteCount=ref(0), authorName=ref('Allure'), authorAvatar=ref(''), authorBio=ref('')
+const articles=ref([]), articleCount=ref(0), noteCount=ref(0)
+const { author } = useAuthor()
+const authorName = computed(() => author.value.name), authorAvatar = computed(() => author.value.avatar), authorBio = computed(() => author.value.signature)
 onMounted(async()=>{
-  try{const[aR,nR]=await Promise.all([axios.get('/api/articles?per_page=8'),axios.get('/api/notes?per_page=50')]);articles.value=aR.data.articles||[];articleCount.value=aR.data.total||0;noteCount.value=nR.data.total||0}catch(e){}
-  try{const{data}=await axios.get('/api/config');const cfg=data.config;authorName.value=cfg.author_name||'Allure';authorAvatar.value=cfg.author_avatar||''}catch(e){}
-  try{const{data}=await axios.get('/api/visitor/admin_admin');authorBio.value=data.visitor?.signature||''}catch(e){}
+  try{const[aD,nD]=await Promise.all([listArticles({per_page:8}),listNotes({per_page:50})]);articles.value=aD.articles||[];articleCount.value=aD.total||0;noteCount.value=nD.total||0}catch(e){}
 })
-function fmt(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit'}):''}
+function fmt(d){return fmtDate(d,{month:'2-digit',day:'2-digit'})}
 function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 </script>
 

@@ -48,13 +48,19 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { PersonOutline, DocumentTextOutline, ChatbubbleOutline, ChatbubblesOutline, FolderOpenOutline, PricetagsOutline, CreateOutline, PeopleOutline } from '@vicons/ionicons5'
-import axios from 'axios'
+import { getStats } from '../../api/stats'
+import { listArticles } from '../../api/articles'
+import { listNotes } from '../../api/notes'
+import { listTags } from '../../api/tags'
+import { useAuthor } from '../../composables/useAuthor'
+import { rel, fmtDate, trunc } from '../../utils/format'
 
 const PersonIcon=PersonOutline, DocIcon=DocumentTextOutline, ChatIcon=ChatbubbleOutline, BubblesIcon=ChatbubblesOutline, FolderIcon=FolderOpenOutline, PricetagIcon=PricetagsOutline, CreateIcon=CreateOutline, PeopleIcon=PeopleOutline
 
 const stats=ref({article_count:0,note_count:0,category_count:0,tag_count:0,comment_count:0,visitor_count:0})
 const articles=ref([]), nlist=ref([])
-const authorName=ref(''), authorAvatar=ref(''), authorSig=ref('')
+const { author } = useAuthor()
+const authorName=computed(()=>author.value.name), authorAvatar=computed(()=>author.value.avatar), authorSig=computed(()=>author.value.signature)
 
 const statList=computed(()=>[
   {icon:DocIcon, value:stats.value.article_count, label:'文章'},
@@ -66,17 +72,13 @@ const statList=computed(()=>[
 ])
 
 onMounted(async()=>{
-  try{stats.value=(await axios.get('/api/stats')).data}catch(e){}
-  try{articles.value=(await axios.get('/api/articles?all=true&per_page=3')).data.articles||[]}catch(e){}
-  try{nlist.value=(await axios.get('/api/notes?all=true&per_page=3')).data.notes||[]}catch(e){}
-  try{stats.value.tag_count=(await axios.get('/api/tags')).data.tags?.length||0}catch(e){}
-  try{const{data}=await axios.get('/api/config');const c=data.config;authorName.value=c.author_name||'Allure';authorAvatar.value=c.author_avatar||''}catch(e){}
-  try{const{data}=await axios.get('/api/visitor/admin_admin');authorSig.value=data.visitor?.signature||''}catch(e){}
+  try{stats.value=await getStats()}catch(e){}
+  try{articles.value=(await listArticles({all:'true',per_page:3})).articles||[]}catch(e){}
+  try{nlist.value=(await listNotes({all:'true',per_page:3})).notes||[]}catch(e){}
+  try{stats.value.tag_count=(await listTags()).length||0}catch(e){}
 })
 
-function fmt(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}):''}
-function trunc(h,n){const t=h.replace(/<[^>]*>/g,'');return t.length>n?t.slice(0,n)+'…':t}
-function rel(d){const s=Math.floor((Date.now()-new Date(d).getTime())/1000);if(s<60)return'刚刚';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';if(s<2592000)return Math.floor(s/86400)+'d';return fmt(d)}
+function fmt(d){return fmtDate(d)}
 </script>
 
 <style scoped>

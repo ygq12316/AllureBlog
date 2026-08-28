@@ -37,7 +37,8 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { SearchOutline, CloseOutline, BookOutline, TimeOutline, TrashOutline } from '@vicons/ionicons5'
 import WordCloud from '../components/WordCloud.vue'
-import axios from 'axios'
+import { listTags } from '../api/tags'
+import { searchArticles } from '../api/articles'
 
 const SearchIcon=SearchOutline, CloseIcon=CloseOutline, BookIcon=BookOutline, TimeIcon=TimeOutline, TrashIcon=TrashOutline
 const route=useRoute(), q=ref(route.query.q||''), results=ref([]), searched=ref(false), focused=ref(false)
@@ -46,10 +47,10 @@ const allTags=ref([])
 if(q.value){searched.value=true;doSearch()}
 
 onMounted(async()=>{
-  try{const{data}=await axios.get('/api/tags');allTags.value=data.tags||[]}catch(e){}
+  try{allTags.value=await listTags()}catch(e){}
 })
 
-async function doSearch(){if(!q.value.trim())return;searched.value=true;try{const{data}=await axios.get('/api/articles/search?q='+encodeURIComponent(q.value));results.value=data.articles||[]}catch(e){results.value=[]}}
+async function doSearch(){if(!q.value.trim())return;searched.value=true;try{const data=await searchArticles(q.value);results.value=data.articles||[]}catch(e){results.value=[]}}
 function fmt(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}):''}
 </script>
 

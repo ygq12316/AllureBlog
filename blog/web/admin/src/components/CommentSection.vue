@@ -48,7 +48,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, ChevronUp } from '@vicons/ionicons5'
 import { useVisitor } from '../composables/useVisitor'
-import axios from 'axios'
+import { listComments, createComment } from '../api/comments'
+import { rel } from '../utils/format'
+import { dicebearUrl } from '../utils/avatar'
 
 const props = defineProps({ noteId: { type: Number, required: true } })
 
@@ -70,7 +72,7 @@ const displayComments = computed(() => {
 onMounted(async () => {
   await init()
   try {
-    const { data } = await axios.get(`/api/notes/${props.noteId}/comments`)
+    const data = await listComments(props.noteId)
     comments.value = data.comments || []
     total.value = data.total || comments.value.length
   } catch {}
@@ -105,7 +107,7 @@ onUnmounted(() => {
 async function submit() {
   if (!content.value.trim()) return
   try {
-    await axios.post(`/api/notes/${props.noteId}/comments`, {
+    await createComment(props.noteId, {
       visitor_uuid: visitor.value.uuid,
       content: content.value.trim(),
     })
@@ -114,24 +116,14 @@ async function submit() {
   }
   content.value = ''
   // 刷新
-  const { data } = await axios.get(`/api/notes/${props.noteId}/comments`)
+  const data = await listComments(props.noteId)
   comments.value = data.comments || []
   total.value = data.total || comments.value.length
   expanded.value = true
 }
 
-function rel(d) {
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
-  if (s < 60) return '刚刚'
-  if (s < 3600) return Math.floor(s / 60) + '分钟前'
-  if (s < 86400) return Math.floor(s / 3600) + '小时前'
-  if (s < 2592000) return Math.floor(s / 86400) + '天前'
-  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-}
-
 function commentAvatar(c) {
-  if (c.avatar_url) return c.avatar_url
-  return `https://api.dicebear.com/9.x/${c.avatar_style || 'lorelei'}/svg?seed=${c.visitor_uuid}`
+  return c.avatar_url || dicebearUrl(c.avatar_style || 'lorelei', c.visitor_uuid)
 }
 </script>
 

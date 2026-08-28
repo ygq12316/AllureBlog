@@ -9,10 +9,21 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// requireEnv 启动即失败：安全相关配置不允许静默使用默认值。
+// 环境变量读取集中在 main,handler 等包 import 无副作用。
+func requireEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("环境变量 %s 未配置，拒绝启动", key)
+	}
+	return v
+}
 
 func main() {
 	dbPath := os.Getenv("DB_PATH")
@@ -34,22 +45,36 @@ func main() {
 	danmakuRepo := repository.NewDanmakuRepo(db)
 	configRepo := repository.NewConfigRepo(db)
 
+	// 业务层：全部领域都有 service，handler 不再直接触碰 repository
 	articleSvc := service.NewArticleService(articleRepo, categoryRepo, tagRepo)
 	noteSvc := service.NewNoteService(noteRepo)
-	visitorSvc := service.NewVisitorService(visitorRepo, commentRepo, danmakuRepo)
+	categorySvc := service.NewCategoryService(categoryRepo)
+	tagSvc := service.NewTagService(tagRepo, articleRepo)
+	commentSvc := service.NewCommentService(commentRepo, visitorRepo)
+	danmakuSvc := service.NewDanmakuService(danmakuRepo, visitorRepo)
+	visitorSvc := service.NewVisitorService(visitorRepo)
+	configSvc := service.NewConfigService(configRepo)
 
-	adminHandler := handler.NewAdminHandler(articleSvc, noteSvc, categoryRepo, tagRepo, commentRepo, danmakuRepo, visitorRepo, configRepo)
-	visitorHandler := handler.NewVisitorHandler(visitorSvc)
+	adminHandler := handler.NewAdminHandler(articleSvc, noteSvc, categorySvc, tagSvc, commentSvc, danmakuSvc, visitorSvc, configSvc)
+	wsHub := handler.NewHub()
+	visitorHandler := handler.NewVisitorHandler(visitorSvc, commentSvc, danmakuSvc, wsHub)
 
-	// 管理员登录时自动创建访客记录
-	handler.InitLogin(visitorRepo)
+	adminUser := os.Getenv("ADMIN_USER")
+	if adminUser == "" {
+		adminUser = "admin"
+	}
+	auth := handler.NewAuth(handler.AuthConfig{
+		Secret: requireEnv("JWT_SECRET"),
+		User:   adminUser,
+		Pass:   requireEnv("ADMIN_PASSWORD"),
+	}, visitorSvc)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 
 	// Public API (no auth needed)
-	r.POST("/api/login", handler.Login)
+	r.POST("/api/login", auth.Login)
 
 	// Visitor public API
 	r.POST("/api/visitor", visitorHandler.RegisterAnonymous)
@@ -84,39 +109,47 @@ func main() {
 		api.GET("/stats", adminHandler.Stats)
 		api.GET("/notes/:id/comments", visitorHandler.ListComments)
 		api.POST("/notes/:id/comments", visitorHandler.CreateComment)
-		api.GET("/notes/:id/ws", handler.HandleNoteWS)
+		api.GET("/notes/:id/ws", wsHub.HandleNoteWS)
 		api.GET("/danmaku", visitorHandler.ListDanmaku)
 		api.POST("/danmaku", visitorHandler.CreateDanmaku)
 	}
 
 	// Protected API (auth required)
-	auth := r.Group("/api")
-	auth.Use(handler.AuthMiddleware())
+	authGroup := r.Group("/api")
+	authGroup.Use(auth.Middleware())
 	{
-		auth.POST("/articles", adminHandler.CreateArticle)
-		auth.PUT("/articles/:id", adminHandler.UpdateArticle)
-		auth.DELETE("/articles/:id", adminHandler.DeleteArticle)
-		auth.POST("/notes", adminHandler.CreateNote)
-		auth.PUT("/notes/:id", adminHandler.UpdateNote)
-		auth.DELETE("/notes/:id", adminHandler.DeleteNote)
-		auth.POST("/categories", adminHandler.CreateCategory)
-		auth.DELETE("/categories/:id", adminHandler.DeleteCategory)
-		auth.POST("/tags", adminHandler.CreateTag)
-		auth.DELETE("/tags/:id", adminHandler.DeleteTag)
-		auth.DELETE("/admin/comments/:id", adminHandler.DeleteComment)
-		auth.DELETE("/admin/danmaku/:id", adminHandler.DeleteDanmaku)
-		auth.GET("/admin/visitors", adminHandler.ListVisitors)
-		auth.PUT("/admin/visitors/:uuid", adminHandler.UpdateVisitor)
-		auth.DELETE("/admin/visitors/:uuid", adminHandler.DeleteVisitor)
-		auth.GET("/admin/config", adminHandler.GetConfig)
-		auth.PUT("/admin/config", adminHandler.UpdateConfig)
+		authGroup.POST("/articles", adminHandler.CreateArticle)
+		authGroup.PUT("/articles/:id", adminHandler.UpdateArticle)
+		authGroup.DELETE("/articles/:id", adminHandler.DeleteArticle)
+		authGroup.POST("/notes", adminHandler.CreateNote)
+		authGroup.PUT("/notes/:id", adminHandler.UpdateNote)
+		authGroup.DELETE("/notes/:id", adminHandler.DeleteNote)
+		authGroup.POST("/categories", adminHandler.CreateCategory)
+		authGroup.DELETE("/categories/:id", adminHandler.DeleteCategory)
+		authGroup.POST("/tags", adminHandler.CreateTag)
+		authGroup.DELETE("/tags/:id", adminHandler.DeleteTag)
+		authGroup.DELETE("/admin/comments/:id", adminHandler.DeleteComment)
+		authGroup.DELETE("/admin/danmaku/:id", adminHandler.DeleteDanmaku)
+		authGroup.GET("/admin/visitors", adminHandler.ListVisitors)
+		authGroup.PUT("/admin/visitors/:uuid", adminHandler.UpdateVisitor)
+		authGroup.DELETE("/admin/visitors/:uuid", adminHandler.DeleteVisitor)
+		authGroup.GET("/admin/config", adminHandler.GetConfig)
+		authGroup.PUT("/admin/config", adminHandler.UpdateConfig)
 	}
 
 	// Serve uploaded files
-	if err := os.MkdirAll("web/static/uploads", 0755); err != nil {
+	if err := os.MkdirAll(handler.UploadsDir, 0755); err != nil {
 		log.Fatal("创建上传目录失败:", err)
 	}
-	r.Static("/uploads", "web/static/uploads")
+	// 禁目录列表、缺失文件 404（而非落入 SPA 回退返回 index.html）
+	r.GET("/uploads/*filepath", func(c *gin.Context) {
+		p := c.Param("filepath")
+		if p == "/" || strings.Contains(p, "..") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.File(filepath.Join(handler.UploadsDir, filepath.FromSlash(p)))
+	})
 
 	// Serve Vue SPA static files
 	distDir := "web/admin/dist"

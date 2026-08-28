@@ -18,7 +18,8 @@ func NewArticleService(ar *repository.ArticleRepo, cr *repository.CategoryRepo, 
 
 func (s *ArticleService) Create(title, content, category, tags string, isPublished bool) (*model.Article, error) {
 	slug := util.Slugify(title)
-	if existing, _ := s.articleRepo.FindBySlug(slug); existing != nil {
+	// 查重不过滤发布状态:草稿撞名同样会触发 uniqueIndex,必须加后缀
+	if s.articleRepo.ExistsBySlug(slug) {
 		slug = slug + "-" + util.RandomSuffix(6)
 	}
 
@@ -86,8 +87,11 @@ func (s *ArticleService) Delete(id uint) error {
 	if err != nil {
 		return err
 	}
+	// 与 Create 的 Increment 对称:分类存在才减,避免计数漂移为负
 	if a.Category != "" {
-		s.categoryRepo.DecrementCount(a.Category)
+		if cat, _ := s.categoryRepo.FindBySlug(util.Slugify(a.Category)); cat != nil {
+			s.categoryRepo.DecrementCount(cat.Name)
+		}
 	}
 	return s.articleRepo.Delete(id)
 }
@@ -116,8 +120,8 @@ func (s *ArticleService) Search(q string, page, pageSize int) ([]model.Article, 
 	return s.articleRepo.Search(q, page, pageSize)
 }
 
-func (s *ArticleService) ListAllPublished() ([]model.Article, error) {
-	return s.articleRepo.ListAllPublished()
+func (s *ArticleService) CountAll() (int64, error) {
+	return s.articleRepo.CountAll()
 }
 
 func (s *ArticleService) GetAllTags() ([]model.Tag, error) {

@@ -1,9 +1,5 @@
 <template>
-  <div class="wrap page-wide">
-    <div class="page-head">
-      <h2>访客管理 ({{ visitors.length }})</h2>
-      <div class="page-head-actions" />
-    </div>
+  <PageShell title="访客管理" width="wide">
     <div class="panel">
       <n-data-table :columns="cols" :data="visitors" :bordered="false" size="small" :row-key="r => r.uuid" />
     </div>
@@ -18,13 +14,15 @@
         <n-button type="primary" block @click="saveEdit">保存</n-button>
       </div>
     </n-modal>
-  </div>
+  </PageShell>
 </template>
 
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { NButton, NPopconfirm } from 'naive-ui'
-import axios from 'axios'
+import { listVisitors, updateVisitor, removeVisitor } from '../../api/visitors'
+import PageShell from '../../components/admin/PageShell.vue'
+import { entityAvatar } from '../../utils/avatar'
 
 const visitors = ref([])
 const editing = ref(false)
@@ -35,7 +33,7 @@ const cols = [
     title: '访客', key: 'nickname', width: 200,
     render(row) {
       return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
-        h('img', { src: `https://api.dicebear.com/9.x/${row.avatar_style}/svg?seed=${row.uuid}`, style: 'width:28px;height:28px;border-radius:50%;background:var(--tag-bg)' }),
+        h('img', { src: entityAvatar(row), style: 'width:28px;height:28px;border-radius:50%;background:var(--tag-bg)' }),
         h('span', { style: 'font-weight:600' }, row.nickname),
       ])
     },
@@ -59,8 +57,7 @@ const cols = [
 
 onMounted(async () => {
   try {
-    const { data } = await axios.get('/api/admin/visitors')
-    visitors.value = (data.visitors || []).filter(v => !v.uuid.startsWith('admin_'))
+    visitors.value = (await listVisitors()).filter(v => !v.uuid.startsWith('admin_'))
   } catch {}
 })
 
@@ -69,14 +66,14 @@ function editVisitor(v) {
     uuid: v.uuid,
     nickname: v.nickname,
     signature: v.signature,
-    avatar: `https://api.dicebear.com/9.x/${v.avatar_style}/svg?seed=${v.uuid}`,
+    avatar: entityAvatar(v),
   }
   editing.value = true
 }
 
 async function saveEdit() {
   try {
-    await axios.put(`/api/admin/visitors/${editForm.value.uuid}`, {
+    await updateVisitor(editForm.value.uuid, {
       nickname: editForm.value.nickname,
       signature: editForm.value.signature,
     })
@@ -91,7 +88,7 @@ async function saveEdit() {
 
 async function del(uuid) {
   try {
-    await axios.delete(`/api/admin/visitors/${uuid}`)
+    await removeVisitor(uuid)
     visitors.value = visitors.value.filter(v => v.uuid !== uuid)
   } catch {}
 }

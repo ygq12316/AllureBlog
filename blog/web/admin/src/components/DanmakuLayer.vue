@@ -25,7 +25,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useVisitor } from '../composables/useVisitor'
-import axios from 'axios'
+import { listDanmaku, createDanmaku } from '../api/danmaku'
 
 defineEmits(['showLogin'])
 const { visitor, account, init, openLogin } = useVisitor()
@@ -47,7 +47,7 @@ async function sendDm() {
   if (!dmText.value.trim()) return
   await init()
   try {
-    const { data } = await axios.post('/api/danmaku', {
+    const data = await createDanmaku({
       visitor_uuid: visitor.value.uuid,
       content: dmText.value.trim(),
       color: '#b8944c',
@@ -64,8 +64,7 @@ function addToTrack(d) {
 
 async function loadDanmaku() {
   try {
-    const { data } = await axios.get('/api/danmaku')
-    if (data.danmaku) danmaku.value = data.danmaku
+    danmaku.value = await listDanmaku()
   } catch {}
 }
 

@@ -19,9 +19,9 @@
 </template>
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { listArticles } from '../api/articles'
 const articles=ref([]);let lastY=''
-onMounted(async()=>{try{const{data}=await axios.get('/api/articles?per_page=100');articles.value=data.articles||[]}catch(e){}})
+onMounted(async()=>{try{const data=await listArticles({per_page:100});articles.value=data.articles||[]}catch(e){}})
 function year(a){return new Date(a.created_at).getFullYear()}
 function yearBreak(a){const y=year(a).toString();if(y!==lastY){lastY=y;return true};return false}
 function fmt(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}):''}

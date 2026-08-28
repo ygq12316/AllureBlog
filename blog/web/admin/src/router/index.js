@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getToken } from '../api/client'
 
 const routes = [
   // === 公开页面 ===
@@ -44,7 +45,7 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 // 管理后台登录守卫：无 token 不进入后台界面（写操作另有后端 401 兜底）
 router.beforeEach(to => {
-  if (to.path.startsWith('/admin') && !localStorage.getItem('token')) {
+  if (to.path.startsWith('/admin') && !getToken()) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
 })

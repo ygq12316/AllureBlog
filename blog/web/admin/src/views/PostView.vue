@@ -27,11 +27,11 @@
 import { ref, onMounted, nextTick, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { TrashOutline } from '@vicons/ionicons5'
-import axios from 'axios'
+import { getArticleBySlug } from '../api/articles'
 const TrashIcon=TrashOutline
 const route=useRoute(), article=ref(null), loading=ref(true), postBody=ref(null), toc=ref([]), activeId=ref('')
 let observer=null
-onMounted(async()=>{try{const{data}=await axios.get('/api/articles?slug='+route.params.slug);article.value=data.article||data.articles?.[0]||null}catch(e){article.value=null};loading.value=false;await nextTick();buildTOC()})
+onMounted(async()=>{try{const data=await getArticleBySlug(route.params.slug);article.value=data.article||data.articles?.[0]||null}catch(e){article.value=null};loading.value=false;await nextTick();buildTOC()})
 function buildTOC(){if(!postBody.value)return;const headings=postBody.value.querySelectorAll('h2,h3'),items=[];let h2I=0,h3I=0;headings.forEach(h=>{const level=h.tagName==='H2'?2:3,id=h.id||(level===2?'s'+(++h2I):'s'+h2I+'-'+(++h3I));if(!h.id)h.id=id;items.push({id,text:h.textContent,level})});toc.value=items;observer=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting){activeId.value=e.target.id;break}}},{rootMargin:'-80px 0px -70% 0px'});headings.forEach(h=>observer.observe(h))}
 function scrollTo(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
 onUnmounted(()=>{if(observer)observer.disconnect()})

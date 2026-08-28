@@ -84,7 +84,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PersonOutline, ArrowBackOutline } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
-import axios from 'axios'
+import { uploadFile } from '../../api/upload'
+import { listComments, removeComment } from '../../api/comments'
+import { getNote, createNote, updateNote, removeNote } from '../../api/notes'
+import { useAuthor } from '../../composables/useAuthor'
+import { entityAvatar } from '../../utils/avatar'
 
 const PersonIcon = PersonOutline
 const ArrowBackIcon = ArrowBackOutline
@@ -93,7 +97,8 @@ const router = useRouter()
 const message = useMessage()
 const content = ref('')
 const images = ref([])
-const authorName = ref('Allure')
+const { author } = useAuthor()
+const authorName = computed(() => author.value.name)
 const comments = ref([])
 const saving = ref(false)
 
@@ -102,17 +107,12 @@ const canPublish = computed(() => content.value.trim().length > 0 || images.valu
 
 function remove(i) { images.value.splice(i, 1) }
 
-function avt(c) {
-  if (c.avatar_url) return c.avatar_url
-  return 'https://api.dicebear.com/9.x/' + (c.avatar_style || 'lorelei') + '/svg?seed=' + c.visitor_uuid
-}
+function avt(c) { return entityAvatar(c, c.visitor_uuid) }
 
 async function upload({ file }) {
   try {
-    const f = new FormData()
-    f.append('file', file.file)
-    const { data } = await axios.post('/api/upload', f)
-    images.value.push(data.url)
+    const { url } = await uploadFile(file.file)
+    images.value.push(url)
   } catch (e) {
     message.error('图片上传失败')
   }
@@ -120,7 +120,7 @@ async function upload({ file }) {
 
 async function loadComments(id) {
   try {
-    const { data } = await axios.get(`/api/notes/${id}/comments`)
+    const data = await listComments(id)
     comments.value = data.comments || []
   } catch (e) {
     message.error('评论加载失败')
@@ -132,8 +132,8 @@ async function publish() {
   try {
     const id = route.params.id
     const payload = { content: content.value, images: images.value.join(','), is_published: true }
-    if (id) await axios.put(`/api/notes/${id}`, payload)
-    else await axios.post('/api/notes', payload)
+    if (id) await updateNote(id, payload)
+    else await createNote(payload)
     router.push('/admin/notes')
   } catch (e) {
     message.error(e.response?.data?.error || '发布失败')
@@ -145,7 +145,7 @@ async function del() {
   const id = route.params.id
   if (!id) return
   try {
-    await axios.delete(`/api/notes/${id}`)
+    await removeNote(id)
     router.push('/admin/notes')
   } catch (e) {
     message.error('删除失败')
@@ -154,7 +154,7 @@ async function del() {
 
 async function delComment(cid) {
   try {
-    await axios.delete(`/api/admin/comments/${cid}`)
+    await removeComment(cid)
     comments.value = comments.value.filter(c => c.id !== cid)
   } catch (e) {
     message.error('评论删除失败')
@@ -162,11 +162,10 @@ async function delComment(cid) {
 }
 
 onMounted(async () => {
-  try { const { data } = await axios.get('/api/config'); authorName.value = data.config?.author_name || 'Allure' } catch (e) {}
   const id = route.params.id
   if (!id) return
   try {
-    const { data } = await axios.get(`/api/notes/${id}`)
+    const data = await getNote(id)
     content.value = data.content || ''
     images.value = data.images ? data.images.split(',').filter(Boolean) : []
   } catch (e) {

@@ -20,18 +20,19 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FolderOpenOutline, LayersOutline, DocumentOutline, BookOutline } from '@vicons/ionicons5'
 import TagCloud from '../components/TagCloud.vue'
-import axios from 'axios'
+import { listCategories } from '../api/categories'
+import { listArticles } from '../api/articles'
 const FolderIcon=FolderOpenOutline, LayersIcon=LayersOutline, DocIcon=DocumentOutline, BookIcon=BookOutline
 const route=useRoute(), router=useRouter(), slug=ref(route.params.slug||''), categories=ref([]), articles=ref([])
 const cloudTags=computed(()=>categories.value.map(c=>({name:c.name,slug:c.slug,count:c.article_count})))
 
 onMounted(async()=>{
-  try{const{data}=await axios.get('/api/categories');categories.value=data.categories||[]}catch(e){}
+  try{categories.value=await listCategories()}catch(e){}
   loadArticles()
 })
 watch(()=>route.params.slug,s=>{slug.value=s||'';loadArticles()})
 function onSelect(s){router.push('/category/'+s)};function clearCat(){router.push('/category')}
-async function loadArticles(){if(!slug.value){articles.value=[];return};try{const{data}=await axios.get('/api/articles?category='+slug.value+'&per_page=50');articles.value=data.articles||[]}catch(e){articles.value=[]}}
+async function loadArticles(){if(!slug.value){articles.value=[];return};try{const data=await listArticles({category:slug.value,per_page:50});articles.value=data.articles||[]}catch(e){articles.value=[]}}
 function md(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit'}):''}
 function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 </script>

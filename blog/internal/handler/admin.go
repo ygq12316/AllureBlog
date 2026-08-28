@@ -1,127 +1,33 @@
 package handler
 
 import (
-	"blog/internal/model"
-	"blog/internal/repository"
 	"blog/internal/service"
-	"blog/internal/util"
-	"crypto/subtle"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
-// requireEnv 启动即失败：安全相关配置不允许静默使用默认值
-func requireEnv(key string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		log.Fatalf("环境变量 %s 未配置，拒绝启动", key)
-	}
-	return v
-}
-
-var (
-	jwtSecret = []byte(requireEnv("JWT_SECRET"))
-	adminUser = func() string {
-		if u := os.Getenv("ADMIN_USER"); u != "" {
-			return u
-		}
-		return "admin"
-	}()
-	adminPass = requireEnv("ADMIN_PASSWORD")
-)
-
-// 管理员登录时自动创建访客记录
-var visitorRepoForLogin *repository.VisitorRepo
-
-func InitLogin(vr *repository.VisitorRepo) { visitorRepoForLogin = vr }
-
-func Login(c *gin.Context) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入账号和密码"})
-		return
-	}
-	// 常数时间比对，避免时序侧信道
-	userOK := subtle.ConstantTimeCompare([]byte(req.Username), []byte(adminUser)) == 1
-	passOK := subtle.ConstantTimeCompare([]byte(req.Password), []byte(adminPass)) == 1
-	if !userOK || !passOK {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "账号或密码错误"})
-		return
-	}
-
-	// 自动创建/更新管理员的访客记录（管理员既是后台用户也是前台访客）
-	if visitorRepoForLogin != nil {
-		v, err := visitorRepoForLogin.FindByUUID("admin_" + req.Username)
-		if err != nil {
-			v = &model.Visitor{
-				UUID:        "admin_" + req.Username,
-				Username:    req.Username,
-				Nickname:    req.Username,
-				AvatarStyle: "lorelei",
-			}
-			visitorRepoForLogin.Register(v, req.Password)
-		} else {
-			visitorRepoForLogin.UpdatePassword(v.UUID, req.Password)
-		}
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": req.Username,
-		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
-	})
-	tokenStr, err := token.SignedString(jwtSecret)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"token": tokenStr, "user": req.Username})
-}
-
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		auth := c.GetHeader("Authorization")
-		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
-			c.Abort()
-			return
-		}
-		tokenStr := strings.TrimPrefix(auth, "Bearer ")
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) { return jwtSecret, nil },
-			jwt.WithValidMethods([]string{"HS256"}))
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已过期"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
+// AdminHandler 管理后台 + 公开读接口。只依赖 service 层，
+// 不直接触碰 repository（上传是纯文件操作，无需 service）
 type AdminHandler struct {
-	articleSvc   *service.ArticleService
-	noteSvc      *service.NoteService
-	categoryRepo *repository.CategoryRepo
-	tagRepo      *repository.TagRepo
-	commentRepo  *repository.CommentRepo
-	danmakuRepo  *repository.DanmakuRepo
-	visitorRepo  *repository.VisitorRepo
-	configRepo   *repository.ConfigRepo
+	articleSvc  *service.ArticleService
+	noteSvc     *service.NoteService
+	categorySvc *service.CategoryService
+	tagSvc      *service.TagService
+	commentSvc  *service.CommentService
+	danmakuSvc  *service.DanmakuService
+	visitorSvc  *service.VisitorService
+	configSvc   *service.ConfigService
 }
 
-func NewAdminHandler(as *service.ArticleService, ns *service.NoteService, cr *repository.CategoryRepo, tr *repository.TagRepo, cmr *repository.CommentRepo, dr *repository.DanmakuRepo, vr *repository.VisitorRepo, cfg *repository.ConfigRepo) *AdminHandler {
-	return &AdminHandler{articleSvc: as, noteSvc: ns, categoryRepo: cr, tagRepo: tr, commentRepo: cmr, danmakuRepo: dr, visitorRepo: vr, configRepo: cfg}
+func NewAdminHandler(as *service.ArticleService, ns *service.NoteService, cs *service.CategoryService, ts *service.TagService, cms *service.CommentService, ds *service.DanmakuService, vs *service.VisitorService, cfgs *service.ConfigService) *AdminHandler {
+	return &AdminHandler{articleSvc: as, noteSvc: ns, categorySvc: cs, tagSvc: ts, commentSvc: cms, danmakuSvc: ds, visitorSvc: vs, configSvc: cfgs}
 }
 
 // -- Articles --
@@ -328,7 +234,7 @@ func (h *AdminHandler) DeleteNote(c *gin.Context) {
 // -- Categories --
 
 func (h *AdminHandler) ListCategories(c *gin.Context) {
-	categories, err := h.categoryRepo.ListAll()
+	categories, err := h.categorySvc.ListAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -344,8 +250,8 @@ func (h *AdminHandler) CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	cat := &model.Category{Name: req.Name, Slug: util.Slugify(req.Name)}
-	if err := h.categoryRepo.Create(cat); err != nil {
+	cat, err := h.categorySvc.Create(req.Name)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -354,7 +260,7 @@ func (h *AdminHandler) CreateCategory(c *gin.Context) {
 
 func (h *AdminHandler) DeleteCategory(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err := h.categoryRepo.Delete(uint(id)); err != nil {
+	if err := h.categorySvc.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -364,7 +270,7 @@ func (h *AdminHandler) DeleteCategory(c *gin.Context) {
 // -- Tags --
 
 func (h *AdminHandler) ListTags(c *gin.Context) {
-	tags, err := h.articleSvc.GetAllTags()
+	tags, err := h.tagSvc.ListAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -380,8 +286,8 @@ func (h *AdminHandler) CreateTag(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	tag := &model.Tag{Name: req.Name, Slug: util.Slugify(req.Name)}
-	if err := h.tagRepo.Create(tag); err != nil {
+	tag, err := h.tagSvc.Create(req.Name)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -390,7 +296,7 @@ func (h *AdminHandler) CreateTag(c *gin.Context) {
 
 func (h *AdminHandler) DeleteTag(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err := h.tagRepo.Delete(uint(id)); err != nil {
+	if err := h.tagSvc.Delete(uint(id)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -398,6 +304,9 @@ func (h *AdminHandler) DeleteTag(c *gin.Context) {
 }
 
 // -- Upload --
+
+// UploadsDir 上传目录，main 与 UploadFile 共用的唯一来源（相对服务器工作目录）
+const UploadsDir = "web/static/uploads"
 
 // 允许上传的图片扩展名（svg 可携带脚本，不放开）
 var allowedUploadExts = map[string]bool{
@@ -437,7 +346,7 @@ func (h *AdminHandler) UploadFile(c *gin.Context) {
 
 	// Generate unique filename
 	name := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	savePath := filepath.Join("web", "static", "uploads", name)
+	savePath := filepath.Join(UploadsDir, name)
 
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
@@ -450,15 +359,15 @@ func (h *AdminHandler) UploadFile(c *gin.Context) {
 // -- Stats --
 
 func (h *AdminHandler) Stats(c *gin.Context) {
-	_, articleTotal, _ := h.articleSvc.ListAll(1, 1)
-	_, noteTotal, _ := h.noteSvc.ListAll(1, 1)
-	categories, _ := h.categoryRepo.ListAll()
-	commentTotal, _ := h.commentRepo.CountAll()
-	visitorTotal, _ := h.visitorRepo.CountAll()
+	articleTotal, _ := h.articleSvc.CountAll()
+	noteTotal, _ := h.noteSvc.CountAll()
+	categoryTotal, _ := h.categorySvc.CountAll()
+	commentTotal, _ := h.commentSvc.CountAll()
+	visitorTotal, _ := h.visitorSvc.CountAll()
 	c.JSON(http.StatusOK, gin.H{
 		"article_count":  articleTotal,
 		"note_count":     noteTotal,
-		"category_count": len(categories),
+		"category_count": categoryTotal,
 		"comment_count":  commentTotal,
 		"visitor_count":  visitorTotal,
 	})
@@ -468,7 +377,7 @@ func (h *AdminHandler) Stats(c *gin.Context) {
 
 func (h *AdminHandler) DeleteComment(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.commentRepo.Delete(id); err != nil {
+	if err := h.commentSvc.Delete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -479,7 +388,7 @@ func (h *AdminHandler) DeleteComment(c *gin.Context) {
 
 func (h *AdminHandler) DeleteDanmaku(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.danmakuRepo.Delete(id); err != nil {
+	if err := h.danmakuSvc.Delete(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -489,7 +398,7 @@ func (h *AdminHandler) DeleteDanmaku(c *gin.Context) {
 // -- Visitor Management --
 
 func (h *AdminHandler) ListVisitors(c *gin.Context) {
-	visitors, err := h.visitorRepo.ListAll()
+	visitors, err := h.visitorSvc.ListAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -499,11 +408,6 @@ func (h *AdminHandler) ListVisitors(c *gin.Context) {
 
 func (h *AdminHandler) UpdateVisitor(c *gin.Context) {
 	uuid := c.Param("uuid")
-	v, err := h.visitorRepo.FindByUUID(uuid)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "未找到"})
-		return
-	}
 	var req struct {
 		Nickname  string `json:"nickname"`
 		Signature string `json:"signature"`
@@ -512,9 +416,12 @@ func (h *AdminHandler) UpdateVisitor(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	v.Nickname = req.Nickname
-	v.Signature = req.Signature
-	if err := h.visitorRepo.Update(v); err != nil {
+	v, err := h.visitorSvc.UpdateProfile(uuid, req.Nickname, req.Signature)
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "未找到"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -523,11 +430,11 @@ func (h *AdminHandler) UpdateVisitor(c *gin.Context) {
 
 func (h *AdminHandler) DeleteVisitor(c *gin.Context) {
 	uuid := c.Param("uuid")
-	if strings.HasPrefix(uuid, "admin_") {
-		c.JSON(http.StatusForbidden, gin.H{"error": "不能删除管理员账号"})
-		return
-	}
-	if err := h.visitorRepo.DeleteByUUID(uuid); err != nil {
+	if err := h.visitorSvc.Delete(uuid); err != nil {
+		if errors.Is(err, service.ErrProtectedVisitor) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "不能删除管理员账号"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -537,7 +444,11 @@ func (h *AdminHandler) DeleteVisitor(c *gin.Context) {
 // -- Blog Config --
 
 func (h *AdminHandler) GetConfig(c *gin.Context) {
-	cfg, _ := h.configRepo.Get()
+	cfg, err := h.configSvc.Get()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取配置失败"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"config": cfg})
 }
 
@@ -550,9 +461,10 @@ func (h *AdminHandler) UpdateConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	cfg, _ := h.configRepo.Get()
-	cfg.AuthorName = req.AuthorName
-	cfg.AuthorAvatar = req.AuthorAvatar
-	h.configRepo.Update(cfg)
+	cfg, err := h.configSvc.UpdateAuthor(req.AuthorName, req.AuthorAvatar)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存配置失败"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"config": cfg})
 }

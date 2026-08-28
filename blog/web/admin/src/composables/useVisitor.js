@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import { saveVisitor } from '../api/visitors'
+import { dicebearUrl } from '../utils/avatar'
 
 // 单例 visitor 状态
 const visitor = ref(null)
@@ -22,8 +23,10 @@ export function openLogin() { loginVisible.value = true }
 export function closeLogin() { loginVisible.value = false }
 
 function generateUUID() {
-  const hex = () => Math.random().toString(36).substring(2, 10)
-  return hex() + hex() + hex()
+  // 访客 UUID 同时是 agent 会话隔离的 key,必须是全球唯一
+  if (crypto?.randomUUID) return crypto.randomUUID()
+  // 老浏览器降级:时间戳+随机数拼接
+  return 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
 }
 
 export function useVisitor() {
@@ -51,7 +54,7 @@ export function useVisitor() {
 
     // 同步到服务端
     try {
-      await axios.post('/api/visitor', visitor.value)
+      await saveVisitor(visitor.value)
     } catch {}
     return visitor.value
   }
@@ -62,34 +65,17 @@ export function useVisitor() {
     if (!visitor.value.setup) visitor.value.setup = true
     localStorage.setItem('blog_visitor', JSON.stringify(visitor.value))
     try {
-      await axios.post('/api/visitor', visitor.value)
+      await saveVisitor(visitor.value)
     } catch {}
   }
 
   const avatarUrl = computed(() => {
     if (!visitor.value) return ''
     if (visitor.value.avatar_url) return visitor.value.avatar_url
-    return `https://api.dicebear.com/9.x/${visitor.value.avatar_style || 'lorelei'}/svg?seed=${encodeURIComponent(visitor.value.uuid)}`
+    return dicebearUrl(visitor.value.avatar_style || 'lorelei', visitor.value.uuid)
   })
 
   const isSetUp = computed(() => visitor.value?.setup === true)
 
-  function showSetup() {
-    // 触发弹窗：清除标记让 PublicLayout 重新判定
-    const raw = localStorage.getItem('blog_visitor')
-    if (raw) {
-      try {
-        const v = JSON.parse(raw)
-        if (v.setup) return true // 已设定
-      } catch {}
-    }
-    return false
-  }
-
-  async function requireSetup() {
-    if (!initialized.value) await init()
-    return isSetUp.value
-  }
-
-  return { visitor, account, avatarUrl, isSetUp, setupVisible, loginVisible, init, update, requireSetup, openSetup, closeSetup, openLogin, closeLogin, setAccount }
+  return { visitor, account, avatarUrl, isSetUp, setupVisible, loginVisible, init, update, openSetup, closeSetup, openLogin, closeLogin, setAccount }
 }

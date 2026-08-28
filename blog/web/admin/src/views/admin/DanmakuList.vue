@@ -1,19 +1,16 @@
 <template>
-  <div class="wrap page-narrow">
-    <div class="page-head">
-      <h2>弹幕管理</h2>
-      <div class="page-head-actions" />
-    </div>
+  <PageShell title="弹幕管理">
     <div class="panel">
       <n-data-table :columns="cols" :data="list" :bordered="false" size="small" :row-key="r => r.id" />
     </div>
-  </div>
+  </PageShell>
 </template>
 
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { NButton, NPopconfirm } from 'naive-ui'
-import axios from 'axios'
+import { listDanmaku, removeDanmaku } from '../../api/danmaku'
+import PageShell from '../../components/admin/PageShell.vue'
 const list = ref([])
 
 const cols = [
@@ -34,15 +31,14 @@ const cols = [
 
 async function load() {
   try {
-    const resp = await axios.get('/api/danmaku')
-    list.value = resp.data.danmaku || []
+    list.value = await listDanmaku()
   } catch (e) {}
 }
 
 onMounted(load)
 
 async function del(id) {
-  await axios.delete('/api/admin/danmaku/' + id)
+  await removeDanmaku(id)
   list.value = list.value.filter(d => d.id !== id)
 }
 </script>

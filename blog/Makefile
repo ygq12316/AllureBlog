@@ -6,12 +6,12 @@ run:
 build:
 	go build -o blog.exe ./cmd/server
 
-# 认证配置为必填项（handler 包启动即校验），测试时注入占位值
+# 认证配置注入发生在 main 启动时（requireEnv），handler 包已无包级副作用
 test:
-	JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go test ./...
+	go test ./...
 
 vet:
-	JWT_SECRET=test-secret ADMIN_PASSWORD=test-pass go vet ./...
+	go vet ./...
 
 lint:
 	golangci-lint run

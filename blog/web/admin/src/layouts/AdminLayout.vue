@@ -48,36 +48,35 @@ import {
   FilmOutline, FolderOpenOutline, PricetagsOutline, PeopleOutline, SettingsOutline,
 } from '@vicons/ionicons5'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import { useParticles } from '../composables/useParticles'
 
 const route = useRoute(), router = useRouter()
 const collapsed = ref(false)
 
+// 菜单唯一事实源:新增后台页只需在此加一行(路由另注册一条)
 const renderIcon = comp => () => h(NIcon, null, { default: () => h(comp) })
-const menuOptions = [
-  { label: '仪表盘', key: 'dashboard', icon: renderIcon(SpeedometerOutline) },
-  { label: '文章', key: 'articles', icon: renderIcon(DocumentTextOutline) },
-  { label: '随笔', key: 'notes', icon: renderIcon(ChatbubbleEllipsesOutline) },
-  { label: '弹幕', key: 'danmakus', icon: renderIcon(FilmOutline) },
-  { label: '分类', key: 'categories', icon: renderIcon(FolderOpenOutline) },
-  { label: '标签', key: 'tags', icon: renderIcon(PricetagsOutline) },
-  { label: '访客', key: 'visitors', icon: renderIcon(PeopleOutline) },
-  { label: '设置', key: 'settings', icon: renderIcon(SettingsOutline) },
+const MENUS = [
+  { label: '仪表盘', key: 'dashboard', to: '/admin', icon: renderIcon(SpeedometerOutline) },
+  { label: '文章', key: 'articles', to: '/admin/articles', icon: renderIcon(DocumentTextOutline) },
+  { label: '随笔', key: 'notes', to: '/admin/notes', icon: renderIcon(ChatbubbleEllipsesOutline) },
+  { label: '弹幕', key: 'danmakus', to: '/admin/danmakus', icon: renderIcon(FilmOutline) },
+  { label: '分类', key: 'categories', to: '/admin/categories', icon: renderIcon(FolderOpenOutline) },
+  { label: '标签', key: 'tags', to: '/admin/tags', icon: renderIcon(PricetagsOutline) },
+  { label: '访客', key: 'visitors', to: '/admin/visitors', icon: renderIcon(PeopleOutline) },
+  { label: '设置', key: 'settings', to: '/admin/settings', icon: renderIcon(SettingsOutline) },
 ]
+const menuOptions = MENUS
 
+// 高亮从路径推导:取 /admin 后的第一段,仪表盘精确匹配
 const activeMenu = computed(() => {
   const p = route.path
-  if (p.startsWith('/admin/articles')) return 'articles'
-  if (p.startsWith('/admin/notes')) return 'notes'
-  if (p.startsWith('/admin/danmakus')) return 'danmakus'
-  if (p.startsWith('/admin/categories')) return 'categories'
-  if (p.startsWith('/admin/tags')) return 'tags'
-  if (p.startsWith('/admin/visitors')) return 'visitors'
-  if (p.startsWith('/admin/settings')) return 'settings'
-  return 'dashboard'
+  if (p === '/admin' || p === '/admin/') return 'dashboard'
+  const seg = '/' + (p.split('/')[2] || '')
+  return MENUS.find(m => m.to === '/admin' + seg)?.key ?? 'dashboard'
 })
 function onMenuClick(key) {
-  const m = { dashboard: '/admin', articles: '/admin/articles', notes: '/admin/notes', danmakus: '/admin/danmakus', categories: '/admin/categories', tags: '/admin/tags', visitors: '/admin/visitors', settings: '/admin/settings' }
-  if (m[key]) router.push(m[key])
+  const m = MENUS.find(m => m.key === key)
+  if (m) router.push(m.to)
 }
 function goBlog() { window.location.href = '/' }
 
@@ -85,19 +84,12 @@ const themeOverrides = {
   common: { primaryColor: '#b8944c', primaryColorHover: '#d4b060', borderRadius: '4px' },
 }
 
-// 粒子系统（复制自原版）
-const canvas = ref(null), glow = ref(null)
-let ctx, w, ch, particles = [], mouse = { x: -999, y: -999 }, animId
-class Particle { constructor() { this.reset(); this.y = Math.random() * ch } reset() { this.x = Math.random() * w; this.y = ch + 10; this.size = Math.random() * 2.5 + 1; this.speedY = -(Math.random() * .4 + .15); this.speedX = (Math.random() - .5) * .3; this.opacity = Math.random() * .4 + .15; this.hue = Math.random() > .5 ? '184,148,76' : '120,105,81' } update() { this.x += this.speedX; this.y += this.speedY; const dx = this.x - mouse.x, dy = this.y - mouse.y, dist = Math.sqrt(dx * dx + dy * dy); if (dist < 120) { const f = (120 - dist) / 120 * 1.5; this.x += (dx / dist) * f; this.y += (dy / dist) * f }; if (this.y < -10 || this.x < -10 || this.x > w + 10) this.reset() } draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = `rgba(${this.hue},${this.opacity})`; ctx.fill() } }
-function initC() { if (!canvas.value) return; ctx = canvas.value.getContext('2d'); resize(); particles = Array.from({ length: 55 }, () => new Particle()); animate() }
-function resize() { w = window.innerWidth; ch = window.innerHeight; canvas.value.width = w; canvas.value.height = ch }
-function animate() { ctx.clearRect(0, 0, w, ch); particles.forEach(p => { p.update(); p.draw() }); animId = requestAnimationFrame(animate) }
-function onMM(e) { mouse.x = e.clientX; mouse.y = e.clientY; if (glow.value) { glow.value.style.opacity = '1'; glow.value.style.transform = `translate3d(${e.clientX - 200}px,${e.clientY - 200}px,0)` } }
-function onML() { mouse.x = -999; mouse.y = -999; if (glow.value) glow.value.style.opacity = '0' }
+// 粒子背景(与公开侧共用 useParticles)
+const { canvas, glow } = useParticles()
 // ≤900px 自动收窄为图标栏
 function onResize() { collapsed.value = window.innerWidth <= 900 }
-onMounted(() => { initC(); onResize(); window.addEventListener('resize', resize); window.addEventListener('resize', onResize); window.addEventListener('mousemove', onMM); document.addEventListener('mouseleave', onML) })
-onUnmounted(() => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); window.removeEventListener('resize', onResize); window.removeEventListener('mousemove', onMM); document.removeEventListener('mouseleave', onML) })
+onMounted(() => { onResize(); window.addEventListener('resize', onResize) })
+onUnmounted(() => { window.removeEventListener('resize', onResize) })
 </script>
 
 <style scoped>

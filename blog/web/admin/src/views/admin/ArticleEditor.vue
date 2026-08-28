@@ -77,7 +77,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowBackOutline } from '@vicons/ionicons5'
 import { useMessage } from 'naive-ui'
-import axios from 'axios'
+import { listCategories } from '../../api/categories'
+import { listTags } from '../../api/tags'
+import { getArticle, createArticle, updateArticle, removeArticle } from '../../api/articles'
 
 const ArrowBackIcon = ArrowBackOutline
 const route = useRoute()
@@ -113,16 +115,16 @@ watch(() => form.value.content, v => {
 })
 
 onMounted(async () => {
-  const [catRes, tagRes] = await Promise.all([
-    axios.get('/api/categories'),
-    axios.get('/api/tags')
+  const [cats, tagsAll] = await Promise.all([
+    listCategories(),
+    listTags()
   ])
-  categories.value = catRes.data.categories || []
-  tagList.value = tagRes.data.tags || []
+  categories.value = cats
+  tagList.value = tagsAll
 
   const id = route.params.id
   if (id) {
-    const { data } = await axios.get(`/api/articles/${id}`)
+    const data = await getArticle(id)
     Object.assign(form.value, data)
     // 回填 tags 数组
     if (data.tags) tags.value = data.tags.split(',').filter(Boolean)
@@ -134,8 +136,8 @@ async function save() {
   try {
     form.value.is_published = true
     const id = route.params.id
-    if (id) await axios.put(`/api/articles/${id}`, form.value)
-    else await axios.post('/api/articles', form.value)
+    if (id) await updateArticle(id, form.value)
+    else await createArticle(form.value)
     router.push('/admin/articles')
   } catch (e) {
     message.error(e.response?.data?.error || '发布失败')
@@ -147,7 +149,7 @@ async function del() {
   const id = route.params.id
   if (!id) return
   try {
-    await axios.delete(`/api/articles/${id}`)
+    await removeArticle(id)
     router.push('/admin/articles')
   } catch (e) {
     message.error('删除失败')

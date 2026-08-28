@@ -30,7 +30,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CreateOutline } from '@vicons/ionicons5'
-import axios from 'axios'
+import { setToken } from '../api/client'
+import { login } from '../api/auth'
 
 const router = useRouter()
 const username = ref('')
@@ -42,8 +43,8 @@ async function doLogin() {
   if (!username.value || !password.value) { error.value = '请输入账号和密码'; return }
   loading.value = true; error.value = ''
   try {
-    const { data } = await axios.post('/api/login', { username: username.value, password: password.value })
-    localStorage.setItem('token', data.token)
+    const data = await login(username.value, password.value)
+    setToken(data.token)
     router.push('/admin')
   } catch (e) {
     error.value = e.response?.data?.error || '登录失败'

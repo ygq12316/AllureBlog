@@ -1,23 +1,25 @@
 package handler
 
 import (
-	"blog/internal/model"
 	"blog/internal/service"
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
+// VisitorHandler 访客公开接口（身份/评论/弹幕）。
+// 业务规则（长度上限、访客存在性、缺省值）全部在 service 层
 type VisitorHandler struct {
 	visitorSvc *service.VisitorService
+	commentSvc *service.CommentService
+	danmakuSvc *service.DanmakuService
+	hub        *Hub
 }
 
-func NewVisitorHandler(vs *service.VisitorService) *VisitorHandler {
-	return &VisitorHandler{visitorSvc: vs}
+func NewVisitorHandler(vs *service.VisitorService, cs *service.CommentService, ds *service.DanmakuService, hub *Hub) *VisitorHandler {
+	return &VisitorHandler{visitorSvc: vs, commentSvc: cs, danmakuSvc: ds, hub: hub}
 }
 
 // POST /api/visitor (匿名访客身份更新)
@@ -33,18 +35,9 @@ func (h *VisitorHandler) RegisterAnonymous(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	if req.AvatarStyle == "" {
-		req.AvatarStyle = "lorelei"
-	}
-	v := &model.Visitor{
-		UUID:        req.UUID,
-		Nickname:    req.Nickname,
-		AvatarStyle: req.AvatarStyle,
-		AvatarURL:   req.AvatarURL,
-		Signature:   req.Signature,
-	}
-	if err := h.visitorSvc.Register(v); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	v, err := h.visitorSvc.RegisterAnonymous(req.UUID, req.Nickname, req.AvatarStyle, req.AvatarURL, req.Signature)
+	if err != nil {
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"visitor": v})
@@ -61,41 +54,17 @@ func (h *VisitorHandler) RegisterWithAccount(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	if len(req.Username) < 2 || len(req.Username) > 20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名2-20个字符"})
-		return
-	}
-	if len(req.Password) < 4 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "密码至少4位"})
-		return
-	}
-	// 直接依赖数据库唯一索引判定重名，避免 check-then-act 竞态
-	v := &model.Visitor{
-		UUID:        req.UUID,
-		Username:    req.Username,
-		Nickname:    req.Username,
-		AvatarStyle: "lorelei",
-	}
-	if err := h.visitorSvc.RegisterWithPassword(v, req.Password); err != nil {
-		if isUniqueViolation(err) {
+	v, err := h.visitorSvc.RegisterWithAccount(req.UUID, req.Username, req.Password)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrUsernameTaken):
 			c.JSON(http.StatusConflict, gin.H{"error": "用户名已存在"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		default:
+			respondError(c, err)
 		}
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"visitor": v, "message": "注册成功"})
-}
-
-// isUniqueViolation 判定唯一约束冲突（GORM 未开启 TranslateError 时走消息匹配兜底）
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 // POST /api/visitor/login (账号登录)
@@ -118,8 +87,7 @@ func (h *VisitorHandler) LoginAccount(c *gin.Context) {
 
 // GET /api/visitor/:uuid
 func (h *VisitorHandler) GetVisitor(c *gin.Context) {
-	uuid := c.Param("uuid")
-	v, err := h.visitorSvc.GetByUUID(uuid)
+	v, err := h.visitorSvc.GetByUUID(c.Param("uuid"))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "未找到"})
 		return
@@ -134,7 +102,7 @@ func (h *VisitorHandler) ListComments(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	comments, total, err := h.visitorSvc.ListComments(uint(noteID), 100)
+	comments, total, err := h.commentSvc.ListByNote(uint(noteID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -157,32 +125,25 @@ func (h *VisitorHandler) CreateComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	if len(req.Content) > 500 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "评论不能超过500字"})
-		return
-	}
-	if !h.visitorSvc.VisitorExists(req.VisitorUUID) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
-		return
-	}
-	comment, err := h.visitorSvc.CreateComment(uint(noteID), req.VisitorUUID, req.Content)
+	fresh, err := h.commentSvc.Create(uint(noteID), req.VisitorUUID, req.Content)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrVisitorNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
+			return
+		}
+		respondError(c, err)
 		return
 	}
 
-	// 广播给所有订阅该随笔的用户（单查该条，避免全量拉取再筛选）
-	fresh, ferr := h.visitorSvc.GetCommentWithVisitor(comment.ID)
-	if ferr == nil {
-		broadcastNoteComment(uint(noteID), gin.H{"type": "comment", "comment": fresh})
-	}
+	// 广播给所有订阅该随笔的用户（service 已返回带访客资料的整条）
+	h.hub.Broadcast(uint(noteID), gin.H{"type": "comment", "comment": fresh})
 
-	c.JSON(http.StatusOK, gin.H{"comment": comment})
+	c.JSON(http.StatusOK, gin.H{"comment": fresh})
 }
 
 // GET /api/danmaku
 func (h *VisitorHandler) ListDanmaku(c *gin.Context) {
-	list, err := h.visitorSvc.ListDanmaku(50)
+	list, err := h.danmakuSvc.ListRecent()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -201,20 +162,13 @@ func (h *VisitorHandler) CreateDanmaku(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	if len(req.Content) > 100 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "弹幕不能超过100字"})
-		return
-	}
-	if req.Color == "" {
-		req.Color = "#b8944c"
-	}
-	if !h.visitorSvc.VisitorExists(req.VisitorUUID) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
-		return
-	}
-	danmaku, err := h.visitorSvc.CreateDanmaku(req.VisitorUUID, req.Content, req.Color)
+	danmaku, err := h.danmakuSvc.Create(req.VisitorUUID, req.Content, req.Color)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrVisitorNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
+			return
+		}
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"danmaku": danmaku})

@@ -37,3 +37,9 @@ func (r *NoteRepo) ListAll(page, pageSize int) ([]model.Note, int64, error) {
 		Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notes).Error
 	return notes, total, err
 }
+
+func (r *NoteRepo) CountAll() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Note{}).Count(&count).Error
+	return count, err
+}

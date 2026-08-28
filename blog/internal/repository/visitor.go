@@ -2,10 +2,27 @@ package repository
 
 import (
 	"blog/internal/model"
+	"errors"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+// ErrDuplicate 唯一约束冲突（用户名/UUID 已存在）。
+// 存储层错误在此翻译为 sentinel,HTTP 层只认它，不再做字符串匹配。
+var ErrDuplicate = errors.New("记录已存在")
+
+// isUniqueViolation 判定唯一约束冲突（GORM 未开启 TranslateError 时走消息匹配兜底）
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
 
 type VisitorRepo struct{ db *gorm.DB }
 
@@ -45,7 +62,7 @@ func (r *VisitorRepo) CreateOrUpdate(v *model.Visitor) error {
 	return r.db.Save(existing).Error
 }
 
-// Register 带密码注册
+// Register 带密码注册；唯一约束冲突返回 ErrDuplicate
 func (r *VisitorRepo) Register(v *model.Visitor, password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -58,7 +75,13 @@ func (r *VisitorRepo) Register(v *model.Visitor, password string) error {
 	if v.AvatarStyle == "" {
 		v.AvatarStyle = "lorelei"
 	}
-	return r.db.Create(v).Error
+	if err := r.db.Create(v).Error; err != nil {
+		if isUniqueViolation(err) {
+			return ErrDuplicate
+		}
+		return err
+	}
+	return nil
 }
 
 // UpdatePassword 更新密码

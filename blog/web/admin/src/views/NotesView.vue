@@ -29,7 +29,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
+import { listNotes } from '../api/notes'
+import { rel } from '../utils/format'
 
 const notes = ref([])
 
@@ -41,7 +42,7 @@ onMounted(async () => {
     darkMode.value = document.documentElement.classList.contains('dark')
   })
   themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-  try { const { data } = await axios.get('/api/notes?per_page=100'); notes.value = data.notes || [] } catch {}
+  try { const data = await listNotes({ per_page: 100 }); notes.value = data.notes || [] } catch {}
 })
 onUnmounted(() => themeObs?.disconnect())
 
@@ -91,15 +92,6 @@ function noteStyle(id, i) {
 }
 
 function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : [] }
-
-function rel(d) {
-  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
-  if (s < 60) return '刚刚'
-  if (s < 3600) return Math.floor(s / 60) + '分钟前'
-  if (s < 86400) return Math.floor(s / 3600) + '小时前'
-  if (s < 2592000) return Math.floor(s / 86400) + '天前'
-  return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-}
 </script>
 
 <style scoped>

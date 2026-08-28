@@ -31,6 +31,12 @@ func (r *CategoryRepo) ListAll() ([]model.Category, error) {
 	return categories, err
 }
 
+func (r *CategoryRepo) CountAll() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Category{}).Count(&count).Error
+	return count, err
+}
+
 func (r *CategoryRepo) IncrementCount(name string) {
 	r.db.Model(&model.Category{}).Where("name = ?", name).UpdateColumn("article_count", gorm.Expr("article_count + ?", 1))
 }

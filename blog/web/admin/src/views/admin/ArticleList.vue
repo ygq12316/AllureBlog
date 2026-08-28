@@ -1,23 +1,21 @@
 <template>
-  <div class="wrap page-wide">
-    <div class="page-head">
-      <h2>文章管理</h2>
-      <div class="page-head-actions">
-        <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
-        <n-button type="primary" @click="$router.push('/admin/articles/new')">+ 写文章</n-button>
-      </div>
-    </div>
+  <PageShell title="文章管理" width="wide">
+    <template #actions>
+      <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
+      <n-button type="primary" @click="$router.push('/admin/articles/new')">+ 写文章</n-button>
+    </template>
     <div class="panel">
       <n-data-table :columns="cols" :data="articles" :bordered="false" size="small"
         :row-key="r => r.id" @update:checked-row-keys="selected = $event" />
     </div>
-  </div>
+  </PageShell>
 </template>
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NTag, useMessage } from 'naive-ui'
-import axios from 'axios'
+import { listArticles, removeArticle } from '../../api/articles'
+import PageShell from '../../components/admin/PageShell.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -32,10 +30,10 @@ const cols = [
   { title: '', width: 50, render(row) { return h(NButton, { size: 'tiny', onClick: () => router.push(`/admin/articles/${row.id}/edit`) }, { default: () => '编辑' }) } },
 ]
 
-onMounted(async () => { const { data } = await axios.get('/api/articles?all=true'); articles.value = data.articles || [] })
+onMounted(async () => { articles.value = (await listArticles({ all: 'true' })).articles || [] })
 async function batchDel() {
   try {
-    for (const id of selected.value) await axios.delete(`/api/articles/${id}`)
+    for (const id of selected.value) await removeArticle(id)
     articles.value = articles.value.filter(a => !selected.value.includes(a.id))
     selected.value = []
   } catch (e) {

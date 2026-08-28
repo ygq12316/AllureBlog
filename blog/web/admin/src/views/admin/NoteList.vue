@@ -1,23 +1,21 @@
 <template>
-  <div class="wrap page-wide">
-    <div class="page-head">
-      <h2>随笔管理</h2>
-      <div class="page-head-actions">
-        <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
-        <n-button type="primary" @click="$router.push('/admin/notes/new')">+ 写随笔</n-button>
-      </div>
-    </div>
+  <PageShell title="随笔管理" width="wide">
+    <template #actions>
+      <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
+      <n-button type="primary" @click="$router.push('/admin/notes/new')">+ 写随笔</n-button>
+    </template>
     <div class="panel">
       <n-data-table :columns="cols" :data="notes" :bordered="false" size="small"
         :row-key="r => r.id" @update:checked-row-keys="selected = $event" />
     </div>
-  </div>
+  </PageShell>
 </template>
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NTag, NPopconfirm, useMessage } from 'naive-ui'
-import axios from 'axios'
+import { listNotes, removeNote } from '../../api/notes'
+import PageShell from '../../components/admin/PageShell.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -63,16 +61,16 @@ const cols = [
   },
 ]
 
-onMounted(async () => { const { data } = await axios.get('/api/notes?all=true'); notes.value = data.notes || [] })
+onMounted(async () => { notes.value = (await listNotes({ all: 'true' })).notes || [] })
 async function del(id) {
   try {
-    await axios.delete(`/api/notes/${id}`)
+    await removeNote(id)
     notes.value = notes.value.filter(n => n.id !== id)
   } catch (e) { message.error('删除失败') }
 }
 async function batchDel() {
   try {
-    for (const id of selected.value) await axios.delete(`/api/notes/${id}`)
+    for (const id of selected.value) await removeNote(id)
     notes.value = notes.value.filter(n => !selected.value.includes(n.id))
     selected.value = []
   } catch (e) {
@@ -80,6 +78,3 @@ async function batchDel() {
   }
 }
 </script>
-<style scoped>
-.wrap { margin: 0 auto; }
-</style>
