@@ -1,6 +1,6 @@
 # Node
 node_modules/
-blog/web/admin/dist/
+blog/web/app/dist/
 
 # Go 构建产物
 *.exe
@@ -37,3 +37,10 @@ Thumbs.db
 .claude/
 *.local
 docker-compose*.local.yml
+
+# 智能体过程文档（历史 plan/spec，不入库）
+docs/superpowers/
+
+# 本地 skill 工具产物（不入库）
+.agents/
+skills-lock.json

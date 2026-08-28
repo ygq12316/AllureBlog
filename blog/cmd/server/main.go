@@ -152,7 +152,7 @@ func main() {
 	})
 
 	// Serve Vue SPA static files
-	distDir := "web/admin/dist"
+	distDir := "web/app/dist"
 	r.Static("/assets", filepath.Join(distDir, "assets"))
 	r.StaticFile("/TagCloud.min.js", filepath.Join(distDir, "TagCloud.min.js"))
 	r.StaticFile("/favicon.ico", filepath.Join(distDir, "favicon.ico"))

@@ -3,11 +3,11 @@
 .gitignore
 
 # Node
-web/admin/node_modules
-web/admin/.vscode
+web/app/node_modules
+web/app/.vscode
 
 # Build artifacts (will be rebuilt inside Docker)
-web/admin/dist
+web/app/dist
 
 # Database (mounted as Volume, don't pack into image)
 *.db
