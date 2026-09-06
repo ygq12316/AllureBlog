@@ -15,7 +15,7 @@
               <time class="text-[10px] text-ink3 ml-auto" :title="new Date(node.c.created_at).toLocaleString('zh-CN')">
                 {{ node.c.temp ? '墨迹未干…' : rel(node.c.created_at) }}
               </time>
-              <span class="text-[10px] text-ink3/70 tabular-nums">#{{ floorOf.get(node.c.id) }}</span>
+              <span class="text-[10px] text-ink3 tabular-nums">#{{ floorOf.get(node.c.id) }}</span>
             </div>
             <p class="text-sm text-ink m-0 mt-1.5 leading-relaxed break-words">{{ node.c.content }}</p>
             <button v-if="account" @click="startReply(node.c)"

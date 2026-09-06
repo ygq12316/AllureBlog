@@ -18,6 +18,7 @@
   --line2: rgba(44, 44, 44, 0.12);
   --accent: #a89279;
   --accent-strong: #8a7458;
+  --cinnabar: #9a4a3a;
 }
 /* === 墨夜 === */
 html.dark {
@@ -26,11 +27,12 @@ html.dark {
   --card: #2a2621;
   --ink: #d8d2c4;
   --ink2: #b5ab99;
-  --ink3: #8a8072;
+  --ink3: #968c7e; /* 比浅色提亮一档：暗底下小字仍可读 */
   --line: rgba(216, 210, 196, 0.18);
   --line2: rgba(216, 210, 196, 0.1);
   --accent: #c0a887;
   --accent-strong: #d4bd9c;
+  --cinnabar: #d99a85; /* 褪朱：暗底下不糊 */
 }
 
 /* 固定色阶：不随主题翻转 */
@@ -39,7 +41,6 @@ html.dark {
   --color-moss-deep: #55645a;
   --color-tea: #a89279;
   --color-sand: #c4b9a8;
-  --color-cinnabar: #9a4a3a;
   --font-serif: 'LXGW WenKai', KaiTi, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -55,6 +56,7 @@ html.dark {
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
+  --color-cinnabar: var(--cinnabar);
 }
 
 @layer base {
