@@ -12,7 +12,8 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      // ws:true — 评论 WS(/api/notes/:id/ws) 与全局弹幕 WS(/api/ws) 经 Vite 转发升级
+      '/api': { target: 'http://localhost:8080', ws: true },
       '/uploads': 'http://localhost:8080',
       // 笔墨精灵 agent — 生产由 Caddy 转发，开发模式在此代理（含 WebSocket）
       '/chat': { target: 'http://localhost:8000', ws: true },

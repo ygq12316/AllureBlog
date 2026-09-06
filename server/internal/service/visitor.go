@@ -93,19 +93,25 @@ func (s *VisitorService) Delete(uuid string) error {
 	return s.visitorRepo.DeleteByUUID(uuid)
 }
 
-// SyncAdmin 管理员登录时同步其访客记录：管理员既是后台用户也是前台访客。
-// 与既有行为一致，失败不影响登录本身
+// SyncAdmin 管理员账号种子同步（启动时以环境凭据调用）：
+// 管理员与其他用户同表同登录，仅 Role 不同。失败不影响启动
 func (s *VisitorService) SyncAdmin(username, password string) {
-	v, err := s.visitorRepo.FindByUUID("admin_" + username)
+	uuid := "admin_" + username
+	v, err := s.visitorRepo.FindByUUID(uuid)
 	if err != nil {
 		nv := &model.Visitor{
-			UUID:        "admin_" + username,
+			UUID:        uuid,
 			Username:    username,
 			Nickname:    username,
 			AvatarStyle: "lorelei",
+			Role:        "admin",
 		}
 		s.visitorRepo.Register(nv, password)
 		return
+	}
+	// 既有行补角色（历史数据可能为空/默认 user）
+	if v.Role != "admin" {
+		s.visitorRepo.UpdateRole(v.UUID, "admin")
 	}
 	s.visitorRepo.UpdatePassword(v.UUID, password)
 }

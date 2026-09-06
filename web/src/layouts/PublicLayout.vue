@@ -47,32 +47,24 @@
       &copy; 2026 笔墨 &middot; 记录思考，分享生活
     </footer>
 
-    <VisitorSetup v-if="setupVisible" @close="closeSetup" />
+    <ProfileModal v-if="profileVisible" @close="closeProfile" />
     <FairyChat />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { CreateOutline, SearchOutline, MenuOutline } from '@vicons/ionicons5'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import UserAvatar from '../components/UserAvatar.vue'
-import VisitorSetup from '../components/VisitorSetup.vue'
+import ProfileModal from '../components/ProfileModal.vue'
 import FairyChat from '../components/FairyChat.vue'
 import { useVisitor } from '../composables/useVisitor'
 import { useParticles } from '../composables/useParticles'
 
 const route = useRoute()
-const { setupVisible, isSetUp, closeSetup, init } = useVisitor()
-
-onMounted(async () => {
-  await init()
-  // 如果未设定身份，弹出设置
-  if (!isSetUp.value) {
-    setupVisible.value = true
-  }
-})
+const { profileVisible, closeProfile } = useVisitor()
 
 const EditIcon = CreateOutline, SearchIcon = SearchOutline, MenuIcon = MenuOutline
 const drawerOpen = ref(false)

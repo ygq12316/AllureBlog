@@ -25,10 +25,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useVisitor } from '../composables/useVisitor'
+import { useWS } from '../composables/useWS'
 import { listDanmaku, createDanmaku } from '../api/danmaku'
 
 defineEmits(['showLogin'])
-const { visitor, account, init, openLogin } = useVisitor()
+const { account, openLogin } = useVisitor()
 const isLoggedIn = computed(() => !!account.value)
 
 const tracks = [0, 1, 2, 3, 4]
@@ -39,25 +40,30 @@ const trackDanmaku = reactive({})
 tracks.forEach(t => trackDanmaku[t] = [])
 
 let counter = 0, timer = null
+const shownIds = new Set() // 本地自插 / WS 回环 / 轮询补漏三路共用的去重
 
 function animDuration() { return 6 + Math.random() * 10 }
 function animDelay() { return (counter++) * 0.3 }
 
 async function sendDm() {
-  if (!dmText.value.trim()) return
-  await init()
+  const text = dmText.value.trim()
+  if (!text || !account.value) return
   try {
     const data = await createDanmaku({
-      visitor_uuid: visitor.value.uuid,
-      content: dmText.value.trim(),
+      visitor_uuid: account.value.uuid,
+      content: text,
       color: '#a89279',
     })
     addToTrack(data.danmaku)
-  } catch {}
+  } catch {
+    openLogin() // 登录态失效：拉起登录
+  }
   dmText.value = ''
 }
 
 function addToTrack(d) {
+  if (!d || shownIds.has(d.id)) return
+  shownIds.add(d.id)
   const t = Math.floor(Math.random() * tracks.length)
   trackDanmaku[t].push(d)
 }
@@ -68,16 +74,28 @@ async function loadDanmaku() {
   } catch {}
 }
 
+// 首屏铺底：均分五轨；之后的增量（WS / 轮询补漏）走 addToTrack
 function seedTracks() {
   tracks.forEach(t => trackDanmaku[t] = [])
-  danmaku.value.forEach((d, i) => trackDanmaku[i % tracks.length].push(d))
+  danmaku.value.forEach((d, i) => {
+    shownIds.add(d.id)
+    trackDanmaku[i % tracks.length].push(d)
+  })
 }
 
-onMounted(async () => {
-  await init()
-  await loadDanmaku()
-  seedTracks()
-  timer = setInterval(loadDanmaku, 30000)
+// 轮询仅作对账兜底：WS 掉线期间的漏网弹幕在此补齐
+function reconcile() {
+  loadDanmaku().then(() => danmaku.value.forEach(addToTrack))
+}
+
+onMounted(() => {
+  loadDanmaku().then(seedTracks)
+  // 全局房间：实时接收所有人的新弹幕
+  const { connect } = useWS('/api/ws', {
+    onMessage: msg => { if (msg.type === 'danmaku' && msg.danmaku) addToTrack(msg.danmaku) },
+  })
+  connect()
+  timer = setInterval(reconcile, 60000)
 })
 onUnmounted(() => clearInterval(timer))
 </script>

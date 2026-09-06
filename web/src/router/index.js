@@ -48,8 +48,12 @@ const router = createRouter({ history: createWebHistory(), routes })
 
 // 管理后台登录守卫：无 token 不进入后台界面（写操作另有后端 401 兜底）
 router.beforeEach(to => {
-  if (to.path.startsWith('/admin') && !getToken()) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+  if (to.path.startsWith('/admin')) {
+    // 后台双重门：须有登录令牌，且账号角色为管理员（角色以服务端签发为准，接口层二次校验）
+    const acct = JSON.parse(localStorage.getItem('blog_account') || 'null')
+    if (!getToken() || acct?.role !== 'admin') {
+      return { path: '/login', query: { redirect: to.fullPath } }
+    }
   }
 })
 

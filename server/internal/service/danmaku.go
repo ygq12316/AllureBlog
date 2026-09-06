@@ -25,7 +25,7 @@ func (s *DanmakuService) ListRecent() ([]model.DanmakuWithVisitor, error) {
 	return s.danmakuRepo.ListRecent(50)
 }
 
-// Create 长度、缺省颜色、访客身份校验后落库
+// Create 长度、缺省颜色、登录身份校验后落库
 func (s *DanmakuService) Create(visitorUUID, content, color string) (*model.Danmaku, error) {
 	if len(content) > maxDanmakuLen {
 		return nil, &ValidationError{Message: "弹幕不能超过100字"}
@@ -33,8 +33,13 @@ func (s *DanmakuService) Create(visitorUUID, content, color string) (*model.Danm
 	if color == "" {
 		color = defaultDanmakuColor
 	}
-	if _, err := s.visitorRepo.FindByUUID(visitorUUID); err != nil {
+	visitor, err := s.visitorRepo.FindByUUID(visitorUUID)
+	if err != nil {
 		return nil, ErrVisitorNotFound
+	}
+	// 仅登录账号可发弹幕（访客模式已移除）
+	if visitor.Username == "" {
+		return nil, &ValidationError{Message: "登录后才能发弹幕"}
 	}
 	d := &model.Danmaku{VisitorUUID: visitorUUID, Content: content, Color: color}
 	if err := s.danmakuRepo.Create(d); err != nil {

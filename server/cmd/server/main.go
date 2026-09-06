@@ -64,24 +64,24 @@ func main() {
 
 	adminHandler := handler.NewAdminHandler(articleSvc, noteSvc, categorySvc, tagSvc, commentSvc, danmakuSvc, visitorSvc, configSvc)
 	wsHub := handler.NewHub()
-	visitorHandler := handler.NewVisitorHandler(visitorSvc, commentSvc, danmakuSvc, wsHub)
 
 	adminUser := os.Getenv("ADMIN_USER")
 	if adminUser == "" {
 		adminUser = "admin"
 	}
+	// 统一账号体系：环境凭据仅作管理员账号的启动种子，登录一律走账号密码 + 角色鉴权
 	auth := handler.NewAuth(handler.AuthConfig{
 		Secret: requireEnv("JWT_SECRET"),
 		User:   adminUser,
 		Pass:   requireEnv("ADMIN_PASSWORD"),
 	}, visitorSvc)
+	auth.SeedAdmin()
+
+	visitorHandler := handler.NewVisitorHandler(visitorSvc, commentSvc, danmakuSvc, wsHub, auth)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
-
-	// Public API (no auth needed)
-	r.POST("/api/login", auth.Login)
 
 	// Visitor public API
 	r.POST("/api/visitor", visitorHandler.RegisterAnonymous)
@@ -117,6 +117,7 @@ func main() {
 		api.GET("/notes/:id/comments", visitorHandler.ListComments)
 		api.POST("/notes/:id/comments", visitorHandler.CreateComment)
 		api.GET("/notes/:id/ws", wsHub.HandleNoteWS)
+		api.GET("/ws", wsHub.HandleGlobalWS)
 		api.GET("/danmaku", visitorHandler.ListDanmaku)
 		api.POST("/danmaku", visitorHandler.CreateDanmaku)
 	}

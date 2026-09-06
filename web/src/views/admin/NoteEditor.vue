@@ -48,19 +48,34 @@
           </div>
           <div class="flex-1 overflow-y-auto">
             <div v-if="!comments.length" class="py-10 text-center text-[13px] text-ink3">还没有评论</div>
-            <div v-for="c in comments" :key="c.id" class="flex items-start gap-2.5 py-3 border-b border-line2 last:border-b-0">
-              <img :src="avt(c)" class="w-7 h-7 rounded-full shrink-0 bg-paper2" alt="" />
-              <div class="flex-1 min-w-0">
-                <div class="flex items-baseline gap-2">
-                  <span class="text-[13px] text-accent-strong">{{ c.nickname || '匿名' }}</span>
-                  <span class="text-[10px] text-ink3">{{ c.created_at?.slice(0, 16) }}</span>
+            <template v-for="node in commentTree" :key="node.c.id">
+              <div class="flex items-start gap-2.5 py-3 border-b border-line2">
+                <img :src="avt(node.c)" class="w-7 h-7 rounded-full shrink-0 bg-paper2" alt="" />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-[13px] text-accent-strong">{{ node.c.nickname || '匿名' }}</span>
+                    <span class="text-[10px] text-ink3">{{ node.c.created_at?.slice(0, 16) }}</span>
+                  </div>
+                  <p class="text-[13px] text-ink mt-1 mb-0 break-words">{{ node.c.content }}</p>
                 </div>
-                <p class="text-[13px] text-ink mt-1 mb-0 break-words">{{ c.content }}</p>
+                <InkPopconfirm text="删除这条评论及其全部回复？" @confirm="delComment(node.c.id)">
+                  <template #trigger><InkButton variant="danger" size="xs">删除</InkButton></template>
+                </InkPopconfirm>
               </div>
-              <InkPopconfirm text="确定删除这条评论？" @confirm="delComment(c.id)">
-                <template #trigger><InkButton variant="danger" size="xs">删除</InkButton></template>
-              </InkPopconfirm>
-            </div>
+              <div v-for="r in node.replies" :key="r.c.id" class="flex items-start gap-2.5 py-2.5 ml-7 pl-3 border-l border-line2 border-b border-b-line2/60 last:border-b-0">
+                <img :src="avt(r.c)" class="w-6 h-6 rounded-full shrink-0 bg-paper2" alt="" />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-xs text-accent-strong">{{ r.c.nickname || '匿名' }}</span>
+                    <span class="text-[10px] text-ink3">{{ r.c.created_at?.slice(0, 16) }}</span>
+                  </div>
+                  <p class="text-xs text-ink mt-1 mb-0 break-words">{{ r.c.content }}</p>
+                </div>
+                <InkPopconfirm text="确定删除这条回复？" @confirm="delComment(r.c.id)">
+                  <template #trigger><InkButton variant="danger" size="xs">删除</InkButton></template>
+                </InkPopconfirm>
+              </div>
+            </template>
           </div>
         </template>
         <div v-else class="flex-1 flex items-center justify-center py-10 text-center text-[13px] text-ink3 leading-loose">发布随笔后<br />即可在此管理评论</div>
@@ -92,6 +107,19 @@ const images = ref([])
 const { author } = useAuthor()
 const authorName = computed(() => author.value.name)
 const comments = ref([])
+
+// 两级分组：根 ASC，回复缩进挂根下（服务端已归根，父不在列表的孤儿按根兜底）
+const commentTree = computed(() => {
+  const byId = new Map()
+  for (const c of comments.value) byId.set(c.id, { c, replies: [] })
+  const roots = []
+  for (const c of comments.value) {
+    const node = byId.get(c.id)
+    if (c.parent_id && byId.has(c.parent_id)) byId.get(c.parent_id).replies.push(node)
+    else roots.push(node)
+  }
+  return roots
+})
 const saving = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
@@ -147,7 +175,8 @@ async function del() {
 async function delComment(cid) {
   try {
     await removeComment(cid)
-    comments.value = comments.value.filter(c => c.id !== cid)
+    // 后端已级联软删回复，本地同步移除根及其子级
+    comments.value = comments.value.filter(c => c.id !== cid && c.parent_id !== cid)
   } catch (e) {
     toast.error('评论删除失败')
   }

@@ -66,26 +66,35 @@ func (h *Hub) Broadcast(noteID uint, msg interface{}) {
 	}
 }
 
-// HandleNoteWS GET /api/notes/:id/ws
+// HandleNoteWS GET /api/notes/:id/ws — 单篇随笔房间
 func (h *Hub) HandleNoteWS(c *gin.Context) {
 	noteID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	h.serve(uint(noteID), c)
+}
 
+// HandleGlobalWS GET /api/ws — 全局房间（room 0，弹幕实时广播）
+func (h *Hub) HandleGlobalWS(c *gin.Context) {
+	h.serve(0, c)
+}
+
+// serve 升级连接并加入房间；客户端只读不发消息，读循环仅用于感知断连与 pong 续期
+func (h *Hub) serve(room uint, c *gin.Context) {
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("[ws] 随笔 %d 握手失败: %v", noteID, err)
+		log.Printf("[ws] 房间 %d 握手失败: %v", room, err)
 		return
 	}
 	cl := &wsClient{conn: conn, send: make(chan interface{}, wsSendBuf)}
 
 	h.mu.Lock()
-	if h.clients[uint(noteID)] == nil {
-		h.clients[uint(noteID)] = make(map[*wsClient]bool)
+	if h.clients[room] == nil {
+		h.clients[room] = make(map[*wsClient]bool)
 	}
-	h.clients[uint(noteID)][cl] = true
+	h.clients[room][cl] = true
 	h.mu.Unlock()
 
 	done := make(chan struct{})
@@ -106,9 +115,9 @@ func (h *Hub) HandleNoteWS(c *gin.Context) {
 
 	// 断连清理：摘除订阅、通知 writer 退出并关连接
 	h.mu.Lock()
-	delete(h.clients[uint(noteID)], cl)
-	if len(h.clients[uint(noteID)]) == 0 {
-		delete(h.clients, uint(noteID))
+	delete(h.clients[room], cl)
+	if len(h.clients[room]) == 0 {
+		delete(h.clients, room)
 	}
 	h.mu.Unlock()
 	close(done)

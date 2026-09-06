@@ -18,6 +18,16 @@ func (r *CommentRepo) Delete(id string) error {
 	return r.db.Delete(&model.Comment{}, id).Error
 }
 
+// DeleteCascade 删除评论及其全部回复（回复只挂在根上，一条 WHERE 即可覆盖，无需递归）
+func (r *CommentRepo) DeleteCascade(id uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&model.Comment{}, id).Error; err != nil {
+			return err
+		}
+		return tx.Where("parent_id = ?", id).Delete(&model.Comment{}).Error
+	})
+}
+
 func (r *CommentRepo) ListByNote(noteID uint, limit int) ([]model.CommentWithVisitor, error) {
 	var results []model.CommentWithVisitor
 	err := r.db.Table("comments").

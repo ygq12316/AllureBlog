@@ -12,6 +12,6 @@ func (e *ValidationError) Error() string { return e.Message }
 var (
 	ErrUsernameTaken    = errors.New("用户名已存在")              // → 409
 	ErrProtectedVisitor = errors.New("不能删除管理员账号")          // → 403
-	ErrVisitorNotFound  = errors.New("访客不存在，请先注册")          // → 404
+	ErrVisitorNotFound  = errors.New("访客不存在，请先注册")          // → 401（评论/弹幕场景：登录态失效）
 	ErrNotFound         = errors.New("不存在")                  // → 404
 )

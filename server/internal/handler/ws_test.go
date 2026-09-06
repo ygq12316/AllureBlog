@@ -117,3 +117,40 @@ func TestHubUnregisterOnClose(t *testing.T) {
 	}
 	t.Error("断连后订阅未清理")
 }
+
+// 回归:全局房间(room 0)收弹幕广播;随笔房间与全局房间互相隔离
+func TestGlobalRoomReceivesDanmakuOnly(t *testing.T) {
+	hub := NewHub()
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.GET("/ws/:id", hub.HandleNoteWS)
+	r.GET("/api/ws", hub.HandleGlobalWS)
+	srv := httptest.NewServer(r)
+	t.Cleanup(srv.Close)
+
+	globalConn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/api/ws", nil)
+	if err != nil {
+		t.Fatalf("全局 WS 握手失败: %v", err)
+	}
+	t.Cleanup(func() { globalConn.Close() })
+	noteConn := dialWS(t, srv, "7")
+	time.Sleep(50 * time.Millisecond)
+
+	hub.Broadcast(0, map[string]string{"type": "danmaku", "danmaku": "大家好"})
+
+	var got map[string]string
+	globalConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if err := globalConn.ReadJSON(&got); err != nil {
+		t.Fatalf("全局房间应收到弹幕广播: %v", err)
+	}
+	if got["type"] != "danmaku" {
+		t.Errorf("广播类型不符: %+v", got)
+	}
+
+	// 随笔房间不应收到全局广播
+	noteConn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	var ignored map[string]string
+	if err := noteConn.ReadJSON(&ignored); err == nil {
+		t.Errorf("随笔房间不应收到全局广播: %+v", ignored)
+	}
+}

@@ -7,7 +7,9 @@ type Comment struct {
 	NoteID      uint      `json:"note_id" gorm:"index"`
 	VisitorUUID string    `json:"visitor_uuid" gorm:"size:64;index"`
 	Content     string    `json:"content" gorm:"size:500"`
-	CreatedAt   time.Time `json:"created_at"`
+	// 父评论 ID：NULL 为根评论；回复永远挂在根上（归根语义，深度恒为 1）
+	ParentID  *uint     `json:"parent_id" gorm:"index"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type CommentWithVisitor struct {

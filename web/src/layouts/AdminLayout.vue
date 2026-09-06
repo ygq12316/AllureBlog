@@ -65,7 +65,7 @@ const MENUS = [
   { label: '弹幕', key: 'danmakus', to: '/admin/danmakus', icon: FilmOutline },
   { label: '分类', key: 'categories', to: '/admin/categories', icon: FolderOpenOutline },
   { label: '标签', key: 'tags', to: '/admin/tags', icon: PricetagsOutline },
-  { label: '访客', key: 'visitors', to: '/admin/visitors', icon: PeopleOutline },
+  { label: '用户', key: 'visitors', to: '/admin/visitors', icon: PeopleOutline },
   { label: '设置', key: 'settings', to: '/admin/settings', icon: SettingsOutline },
 ]
 

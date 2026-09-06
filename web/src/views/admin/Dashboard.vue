@@ -73,7 +73,7 @@ const statList=computed(()=>[
   {icon:DocIcon, value:stats.value.article_count, label:'文章'},
   {icon:ChatIcon, value:stats.value.note_count, label:'随笔'},
   {icon:BubblesIcon, value:stats.value.comment_count ?? 0, label:'评论'},
-  {icon:PeopleIcon, value:stats.value.visitor_count ?? 0, label:'访客'},
+  {icon:PeopleIcon, value:stats.value.visitor_count ?? 0, label:'用户'},
   {icon:FolderIcon, value:stats.value.category_count||0, label:'分类'},
   {icon:PricetagIcon, value:stats.value.tag_count||0, label:'标签'},
 ])

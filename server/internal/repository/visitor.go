@@ -72,6 +72,9 @@ func (r *VisitorRepo) Register(v *model.Visitor, password string) error {
 	if v.Nickname == "" {
 		v.Nickname = v.Username
 	}
+	if v.Role == "" {
+		v.Role = "user"
+	}
 	if v.AvatarStyle == "" {
 		v.AvatarStyle = "lorelei"
 	}
@@ -91,6 +94,11 @@ func (r *VisitorRepo) UpdatePassword(uuid, password string) error {
 		return err
 	}
 	return r.db.Model(&model.Visitor{}).Where("uuid = ?", uuid).Update("password", string(hash)).Error
+}
+
+// UpdateRole 更新角色（user / admin）
+func (r *VisitorRepo) UpdateRole(uuid, role string) error {
+	return r.db.Model(&model.Visitor{}).Where("uuid = ?", uuid).Update("role", role).Error
 }
 
 // Login 登录校验

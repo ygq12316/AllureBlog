@@ -1,8 +1,9 @@
 package handler
 
 import (
+	"blog/internal/model"
 	"blog/internal/service"
-	"crypto/subtle"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -12,61 +13,46 @@ import (
 )
 
 // AuthConfig 鉴权配置：由 main 组装时注入。
-// handler 包不再有包级 init 副作用（环境变量读取与缺失即 Fatal 均在 main 完成）。
+// 环境凭据仅作管理员账号的启动种子（SyncAdmin），登录统一走账号密码 + 角色校验。
 type AuthConfig struct {
 	Secret string // JWT 签名密钥
-	User   string // 管理员账号
-	Pass   string // 管理员密码
+	User   string // 管理员账号名（种子）
+	Pass   string // 管理员密码（种子）
 }
 
-// Auth 管理员登录签发 JWT 与写操作鉴权。
-// interface 只有两个方法（Login / Middleware），常数时间比对、bcrypt 同步、
-// 7 天有效期全部藏在 implementation 里。
+// Auth 统一账号体系的 JWT 签发与管理端鉴权。
+// 角色存于 visitors.role（user/admin），令牌携带 role，Middleware 只放行 admin。
 type Auth struct {
 	cfg        AuthConfig
-	visitorSvc *service.VisitorService // 可为 nil：仅用于登录时同步管理员访客记录
+	visitorSvc *service.VisitorService
 }
 
 func NewAuth(cfg AuthConfig, vs *service.VisitorService) *Auth {
 	return &Auth{cfg: cfg, visitorSvc: vs}
 }
 
-// Login POST /api/login
-func (a *Auth) Login(c *gin.Context) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请输入账号和密码"})
-		return
-	}
-	// 常数时间比对，避免时序侧信道
-	userOK := subtle.ConstantTimeCompare([]byte(req.Username), []byte(a.cfg.User)) == 1
-	passOK := subtle.ConstantTimeCompare([]byte(req.Password), []byte(a.cfg.Pass)) == 1
-	if !userOK || !passOK {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "账号或密码错误"})
-		return
-	}
-
-	// 自动创建/更新管理员的访客记录（管理员既是后台用户也是前台访客）
+// SeedAdmin 启动时以环境凭据同步管理员账号（存在则刷新密码与角色）。
+// 环境变量从「登录凭据」退化为「引导种子」：此后登录一律走账号体系。
+func (a *Auth) SeedAdmin() {
 	if a.visitorSvc != nil {
-		a.visitorSvc.SyncAdmin(req.Username, req.Password)
+		a.visitorSvc.SyncAdmin(a.cfg.User, a.cfg.Pass)
+		log.Printf("管理员账号 %s 已同步（来源：环境变量种子）", a.cfg.User)
 	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user": req.Username,
-		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
-	})
-	tokenStr, err := token.SignedString([]byte(a.cfg.Secret))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"token": tokenStr, "user": req.Username})
 }
 
-// Middleware 校验 Bearer token，供所有写操作路由使用
+// IssueToken 为登录成功的用户签发 7 天期 JWT，携带角色供管理端鉴权
+func (a *Auth) IssueToken(v *model.Visitor) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user": v.Username,
+		"uuid": v.UUID,
+		"role": v.Role,
+		"exp":  time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	return token.SignedString([]byte(a.cfg.Secret))
+}
+
+// Middleware 校验 Bearer token 且角色必须为 admin，供后台写操作路由使用。
+// 普通用户（role=user）持有合法令牌也进不了管理端。
 func (a *Auth) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
@@ -80,6 +66,12 @@ func (a *Auth) Middleware() gin.HandlerFunc {
 			jwt.WithValidMethods([]string{"HS256"}))
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "登录已过期"})
+			c.Abort()
+			return
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || claims["role"] != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "仅管理员可执行此操作"})
 			c.Abort()
 			return
 		}

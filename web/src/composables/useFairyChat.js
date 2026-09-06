@@ -3,7 +3,7 @@ import { useVisitor } from './useVisitor'
 
 // 笔墨精灵聊天 — WebSocket 状态机（纯逻辑，视图在 FairyChat.vue）
 export function useFairyChat() {
-  const { visitor, account, init } = useVisitor()
+  const { account } = useVisitor()
   const status = ref('idle') // idle | connecting | ready | need-login | offline
   const messages = ref([])
   const streaming = ref(false)
@@ -57,10 +57,8 @@ export function useFairyChat() {
 
   async function connect() {
     if (status.value === 'connecting' || status.value === 'ready') return
-    await init() // uuid 由 useVisitor 自动生成并持久化，此处必可得
-    // 仅账号登录用户可聊（登录后 visitor.uuid 即账号身份，服务端校验 username）
+    // 仅账号登录用户可聊（服务端校验 username）
     if (!account.value) { status.value = 'need-login'; return }
-    if (!visitor.value) return
     status.value = 'connecting'
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     try {
@@ -72,8 +70,8 @@ export function useFairyChat() {
     ws.onopen = () => {
       ws.send(JSON.stringify({
         type: 'auth',
-        visitor_uuid: visitor.value.uuid,
-        visitor_name: visitor.value.nickname,
+        visitor_uuid: account.value.uuid,
+        visitor_name: account.value.nickname,
       }))
     }
     ws.onmessage = ev => {

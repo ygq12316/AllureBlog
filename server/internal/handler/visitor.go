@@ -10,16 +10,17 @@ import (
 )
 
 // VisitorHandler 访客公开接口（身份/评论/弹幕）。
-// 业务规则（长度上限、访客存在性、缺省值）全部在 service 层
+// 业务规则（长度上限、登录要求、缺省值）全部在 service 层
 type VisitorHandler struct {
 	visitorSvc *service.VisitorService
 	commentSvc *service.CommentService
 	danmakuSvc *service.DanmakuService
 	hub        *Hub
+	auth       *Auth // 统一账号体系：登录/注册成功后签发 JWT
 }
 
-func NewVisitorHandler(vs *service.VisitorService, cs *service.CommentService, ds *service.DanmakuService, hub *Hub) *VisitorHandler {
-	return &VisitorHandler{visitorSvc: vs, commentSvc: cs, danmakuSvc: ds, hub: hub}
+func NewVisitorHandler(vs *service.VisitorService, cs *service.CommentService, ds *service.DanmakuService, hub *Hub, auth *Auth) *VisitorHandler {
+	return &VisitorHandler{visitorSvc: vs, commentSvc: cs, danmakuSvc: ds, hub: hub, auth: auth}
 }
 
 // POST /api/visitor (匿名访客身份更新)
@@ -43,7 +44,7 @@ func (h *VisitorHandler) RegisterAnonymous(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"visitor": v})
 }
 
-// POST /api/visitor/register (账号注册)
+// POST /api/visitor/register (账号注册，成功即登录)
 func (h *VisitorHandler) RegisterWithAccount(c *gin.Context) {
 	var req struct {
 		UUID     string `json:"uuid" binding:"required"`
@@ -64,10 +65,15 @@ func (h *VisitorHandler) RegisterWithAccount(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"visitor": v, "message": "注册成功"})
+	token, terr := h.auth.IssueToken(v)
+	if terr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"visitor": v, "token": token, "message": "注册成功"})
 }
 
-// POST /api/visitor/login (账号登录)
+// POST /api/visitor/login (统一账号登录：管理员与普通用户同入口，角色随令牌签发)
 func (h *VisitorHandler) LoginAccount(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
@@ -82,7 +88,12 @@ func (h *VisitorHandler) LoginAccount(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"visitor": v})
+	token, terr := h.auth.IssueToken(v)
+	if terr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"visitor": v, "token": token})
 }
 
 // GET /api/visitor/:uuid
@@ -120,25 +131,26 @@ func (h *VisitorHandler) CreateComment(c *gin.Context) {
 	var req struct {
 		VisitorUUID string `json:"visitor_uuid" binding:"required"`
 		Content     string `json:"content" binding:"required"`
+		ParentID    *uint  `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
 		return
 	}
-	fresh, err := h.commentSvc.Create(uint(noteID), req.VisitorUUID, req.Content)
+	fresh, replyTo, err := h.commentSvc.Create(uint(noteID), req.VisitorUUID, req.Content, req.ParentID)
 	if err != nil {
 		if errors.Is(err, service.ErrVisitorNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录后评论"})
 			return
 		}
 		respondError(c, err)
 		return
 	}
 
-	// 广播给所有订阅该随笔的用户（service 已返回带访客资料的整条）
-	h.hub.Broadcast(uint(noteID), gin.H{"type": "comment", "comment": fresh})
+	// 广播给所有订阅该随笔的用户（service 已返回带访客资料的整条 + 被回复人昵称）
+	h.hub.Broadcast(uint(noteID), gin.H{"type": "comment", "comment": fresh, "reply_to": replyTo})
 
-	c.JSON(http.StatusOK, gin.H{"comment": fresh})
+	c.JSON(http.StatusOK, gin.H{"comment": fresh, "reply_to": replyTo})
 }
 
 // GET /api/danmaku
@@ -165,11 +177,15 @@ func (h *VisitorHandler) CreateDanmaku(c *gin.Context) {
 	danmaku, err := h.danmakuSvc.Create(req.VisitorUUID, req.Content, req.Color)
 	if err != nil {
 		if errors.Is(err, service.ErrVisitorNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "访客不存在，请先注册"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "请先登录后发弹幕"})
 			return
 		}
 		respondError(c, err)
 		return
 	}
+
+	// 广播到全局房间（room 0）：所有在线访客的弹幕墙实时滚动
+	h.hub.Broadcast(0, gin.H{"type": "danmaku", "danmaku": danmaku})
+
 	c.JSON(http.StatusOK, gin.H{"danmaku": danmaku})
 }

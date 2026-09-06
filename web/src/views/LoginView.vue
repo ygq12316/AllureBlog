@@ -17,14 +17,17 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { CreateOutline } from '@vicons/ionicons5'
 import InkInput from '../components/ui/InkInput.vue'
 import InkButton from '../components/ui/InkButton.vue'
 import { setToken } from '../api/client'
-import { login } from '../api/auth'
+import { loginAccount } from '../api/visitors'
+import { setAccount } from '../composables/useVisitor'
+import { toast } from '../composables/useToast'
 
 const router = useRouter()
+const route = useRoute()
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -34,9 +37,16 @@ async function doLogin() {
   if (!username.value || !password.value) { error.value = '请输入账号和密码'; return }
   loading.value = true; error.value = ''
   try {
-    const data = await login(username.value, password.value)
+    // 统一账号登录：管理员与普通用户同入口，角色由服务端签发进令牌
+    const data = await loginAccount({ username: username.value, password: password.value })
     setToken(data.token)
-    router.push('/admin')
+    setAccount(data.visitor)
+    if (data.visitor?.role === 'admin') {
+      router.push(route.query.redirect || '/admin')
+    } else {
+      toast.info('该账号无后台权限，已进入博客')
+      router.push('/')
+    }
   } catch (e) {
     error.value = e.response?.data?.error || '登录失败'
   }
