@@ -168,7 +168,9 @@ func main() {
 	r.StaticFile("/favicon.ico", filepath.Join(distDir, "favicon.ico"))
 
 	// SPA fallback: serve index.html for all non-API routes
+	// index.html 必须 no-cache：资源文件名带内容哈希可长缓存，入口文件缓存旧了会整套跑旧前端
 	r.NoRoute(func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache")
 		c.File(filepath.Join(distDir, "index.html"))
 	})
 

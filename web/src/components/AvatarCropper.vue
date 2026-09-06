@@ -5,8 +5,9 @@
       class="relative w-[200px] h-[200px] mx-auto mb-2 rounded-full overflow-hidden border border-accent cursor-move touch-none select-none"
       @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp"
       @wheel.prevent="onWheel">
+      <!-- 以 natural 尺寸参与布局，仅用 translate + 等比 scale 缩放：宽高比不可能被拉坏 -->
       <img ref="imgEl" :src="src" :style="imgStyle"
-        class="absolute top-1/2 left-1/2 max-w-none pointer-events-none will-change-transform"
+        class="absolute max-w-none pointer-events-none will-change-transform"
         alt="裁剪预览" @load="onImgLoad" @error="onImgError" />
       <div class="absolute inset-0 rounded-full pointer-events-none" style="box-shadow: inset 0 0 0 999px rgba(0,0,0,.35)" />
     </div>
@@ -47,8 +48,9 @@ let img = null // Image 对象，导出时取像素
 let drag = null // { px, py, ox, oy }
 
 const baseScale = computed(() => (natural.value.w ? SIZE / Math.min(natural.value.w, natural.value.h) : 0))
-const dispW = computed(() => natural.value.w * baseScale.value * zoom.value)
-const dispH = computed(() => natural.value.h * baseScale.value * zoom.value)
+const dispScale = computed(() => baseScale.value * zoom.value) // 唯一缩放变量：等比，不可形变
+const dispW = computed(() => natural.value.w * dispScale.value)
+const dispH = computed(() => natural.value.h * dispScale.value)
 
 // 图心 = 视口中心 + off；可移动范围 = (显示尺寸 - 视口) / 2
 const maxOff = computed(() => ({
@@ -60,10 +62,12 @@ const clampOff = v => ({
   y: Math.max(-maxOff.value.y, Math.min(maxOff.value.y, v.y)),
 })
 
+// 显示方案：left/top 定位图心（视口中心 + off），translate(-50%,-50%) 居中自身，
+// 再乘统一 scale 因子 —— 只有一个缩放变量，宽高比结构上不可能变形
 const imgStyle = computed(() => ({
-  width: dispW.value + 'px',
-  height: dispH.value + 'px',
-  transform: `translate(calc(-50% + ${off.value.x}px), calc(-50% + ${off.value.y}px))`,
+  left: `calc(50% + ${off.value.x}px)`,
+  top: `calc(50% + ${off.value.y}px)`,
+  transform: `translate(-50%, -50%) scale(${dispScale.value})`,
 }))
 
 function onImgLoad() {
