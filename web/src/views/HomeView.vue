@@ -1,42 +1,47 @@
 <template>
-  <div style="position:relative">
+  <div class="relative">
     <DanmakuLayer />
 
-    <section class="hero-block">
-      <div class="hero-center">
-        <n-icon size="18" color="var(--border)" :component="StarIcon" />
+    <section class="w-full min-h-screen flex flex-col items-center justify-center relative z-[2]">
+      <div class="text-center -mt-[8vh]">
+        <StarIcon class="w-[18px] h-[18px] text-line mx-auto" />
         <p class="hero-typing">技术是笔，生活是墨。</p>
         <p class="hero-sub">—— 在这里写下两种颜色</p>
       </div>
-      <a href="#main" class="hero-arrow"><n-icon :component="DownIcon" /></a>
+      <a href="#main" class="hero-arrow" aria-label="向下浏览"><DownIcon class="w-5 h-5" /></a>
     </section>
 
-    <div id="main" class="main-content">
-      <aside class="profile-sidebar">
-        <img v-if="authorAvatar" :src="authorAvatar" class="profile-img" />
-        <div v-else class="profile-avatar"><n-icon size="20" :component="UserIcon" /></div>
-        <div class="profile-name">{{ authorName }}</div>
-        <div v-if="authorBio" class="profile-bio">{{ authorBio }}</div>
-        <hr class="profile-divider">
-        <div class="profile-stats"><div><strong>{{ articleCount }}</strong><span>文章</span></div><div><strong>{{ noteCount }}</strong><span>随笔</span></div></div>
-        <div class="profile-links"><a href="https://github.com" target="_blank">GitHub</a><a href="/feed.xml">RSS</a></div>
-      </aside>
-      <main class="articles-main">
-        <div class="articles-header">最近更新</div>
-        <div v-if="!articles.length" class="empty-block">
-          <n-icon size="32" color="var(--gold)" :component="EditIcon" />
-          <div class="empty-title">墨还未干</div>
-          <div class="empty-desc">第一篇文字正在路上。趁这个时间，泡杯茶吧</div>
+    <div id="main" class="flex flex-col md:flex-row relative z-[2] gap-6 md:gap-12 min-h-[50vh] scroll-mt-16">
+      <aside class="w-full md:w-[200px] shrink-0 flex flex-wrap md:flex-col items-center md:items-start gap-x-3.5 gap-y-2 border-b md:border-b-0 border-line2 pb-4 md:pb-0">
+        <img v-if="authorAvatar" :src="authorAvatar" class="w-12 h-12 rounded-full object-cover border border-accent" alt="博主头像" />
+        <div v-else class="w-12 h-12 rounded-full bg-paper2 border border-line flex items-center justify-center text-ink3">
+          <UserIcon class="w-5 h-5" />
         </div>
-        <article v-for="(a,i) in articles" :key="a.id" class="post-card" :style="{animationDelay:i*0.1+'s'}">
-          <router-link :to="'/posts/'+a.slug" class="post-card-link">
-            <time class="post-card-date">{{ fmt(a.created_at) }}</time>
-            <h3 class="post-card-title">{{ a.title }}</h3>
-            <p class="post-card-excerpt">{{ a.excerpt }}</p>
-            <div class="post-card-tags" v-if="a.tags"><span v-for="t in splitTags(a.tags)" :key="t" class="post-tag">{{ t }}</span></div>
+        <div class="text-[15px] tracking-widest text-ink">{{ authorName }}</div>
+        <div v-if="authorBio" class="basis-full text-xs text-ink3 leading-relaxed">{{ authorBio }}</div>
+        <hr class="hidden md:block w-full border-0 border-t border-dotted border-line2 my-2">
+        <div class="flex gap-4">
+          <span class="text-[15px] text-ink">{{ articleCount }}<span class="text-[10px] text-ink3 ml-1">文章</span></span>
+          <span class="text-[15px] text-ink">{{ noteCount }}<span class="text-[10px] text-ink3 ml-1">随笔</span></span>
+        </div>
+        <div class="text-xs"><a href="https://github.com" target="_blank" class="text-accent-strong no-underline mr-2.5 transition-colors duration-700 hover:text-ink">GitHub</a><a href="/feed.xml" class="text-accent-strong no-underline transition-colors duration-700 hover:text-ink">RSS</a></div>
+      </aside>
+      <main class="flex-1 min-w-0">
+        <div class="text-xs text-ink3 tracking-[0.2em] uppercase mb-5">最近更新</div>
+        <div v-if="!articles.length" class="text-center py-16">
+          <EditIcon class="w-8 h-8 text-accent mx-auto mb-3" />
+          <div class="text-lg font-light tracking-widest text-ink mb-1.5">墨还未干</div>
+          <div class="text-[13px] text-ink3">第一篇文字正在路上。趁这个时间，泡杯茶吧</div>
+        </div>
+        <article v-for="(a,i) in articles" :key="a.id" class="post-card mb-3" :style="{animationDelay:i*0.12+'s'}">
+          <router-link :to="'/posts/'+a.slug" class="group block no-underline p-5 md:p-6 bg-paper2 border border-line transition-colors duration-700 hover:border-accent">
+            <time class="block text-[11px] text-accent-strong tracking-widest mb-1">{{ fmt(a.created_at) }}</time>
+            <h3 class="text-base md:text-lg font-light tracking-wide text-ink mb-1 transition-colors duration-700 group-hover:text-accent-strong">{{ a.title }}</h3>
+            <p class="text-[13px] text-ink3 leading-relaxed mb-2">{{ a.excerpt }}</p>
+            <div class="flex flex-wrap gap-1.5" v-if="a.tags"><span v-for="t in splitTags(a.tags)" :key="t" class="text-[10px] px-2 py-px border border-line2 text-ink3">{{ t }}</span></div>
           </router-link>
         </article>
-        <div v-if="articles.length" class="post-card-more"><router-link to="/articles">浏览全部文章 →</router-link></div>
+        <div v-if="articles.length" class="text-center mt-5"><router-link to="/articles" class="text-[13px] text-accent-strong no-underline border-b border-transparent transition-colors duration-700 hover:text-ink hover:border-accent/50">浏览全部文章 →</router-link></div>
       </main>
     </div>
   </div>
@@ -62,48 +67,16 @@ function splitTags(t){return t?t.split(',').map(x=>x.trim()).filter(Boolean):[]}
 </script>
 
 <style scoped>
-.hero-block{width:100%;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;z-index:2;background:transparent}
-.hero-center{text-align:center;margin-top:-8vh}.hero-typing{display:inline-block;overflow:hidden;white-space:nowrap;border-right:2px solid var(--gold);font-size:clamp(22px,3.5vw,34px);font-weight:700;color:var(--text);animation:type 2.8s steps(14).3s both;margin-bottom:12px}
-.hero-sub{font-size:clamp(13px,1.2vw,16px);color:var(--muted);opacity:0;animation:appear .8s 3s both}
-.hero-arrow{position:absolute;bottom:clamp(60px,10vh,120px);width:36px;height:36px;background:var(--tag-bg);border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);text-decoration:none;opacity:1;animation:bounce 1.8s ease-in-out infinite}
+.hero-typing{display:inline-block;overflow:hidden;white-space:nowrap;border-right:1px solid var(--accent);font-size:clamp(26px,4vw,44px);font-weight:400;font-family:'LXGW WenKai',serif;color:var(--ink);letter-spacing:.08em;animation:type 2.8s steps(14).3s both;margin:10px 0 14px}
+.hero-sub{font-size:clamp(13px,1.2vw,16px);color:var(--ink3);font-family:'LXGW WenKai',serif;opacity:0;animation:appear 1s 3s both}
+.hero-arrow{position:absolute;bottom:clamp(60px,10vh,120px);width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--ink3);text-decoration:none;transition:color .7s ease-in-out;animation:breathe 4s ease-in-out infinite}
+.hero-arrow:hover{color:var(--accent-strong)}
 @keyframes type{from{width:0}to{width:100%}}
 @keyframes appear{from{opacity:0}to{opacity:1}}
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
-.main-content{display:flex;position:relative;z-index:2;padding:0;gap:clamp(24px,5vw,56px);min-height:50vh;scroll-margin-top:68px}
-.profile-sidebar{width:clamp(160px,18vw,220px);flex-shrink:0}
-.profile-avatar{width:48px;height:48px;border-radius:50%;background:var(--tag-bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--gold)}
-.profile-img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);margin-bottom:12px}
-.profile-name{font-size:clamp(14px,1.1vw,16px);font-weight:700;color:var(--text);margin-bottom:2px}
-.profile-bio{font-size:clamp(10px,.85vw,12px);color:var(--muted);line-height:1.6;margin-bottom:12px}
-.profile-divider{border:none;border-top:1px dotted var(--card-border);margin-bottom:12px}
-.profile-stats{display:flex;gap:16px;margin-bottom:12px}
-.profile-stats strong{font-size:clamp(14px,1.1vw,16px);color:var(--text);margin-right:2px}
-.profile-stats span{font-size:clamp(9px,.75vw,11px);color:var(--muted)}
-.profile-links{font-size:clamp(10px,.85vw,12px)}.profile-links a{color:var(--gold);text-decoration:none;margin-right:10px}
-.articles-main{flex:1;min-width:0}.articles-header{font-size:clamp(10px,.85vw,12px);color:var(--muted);letter-spacing:2px;margin-bottom:16px;text-transform:uppercase}
-.post-card{margin-bottom:12px;animation:fadeUp .6s ease-out both}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.post-card-link{display:block;text-decoration:none;padding:clamp(14px,2vw,20px);background:var(--tag-bg);border:1px solid var(--card-border);border-radius:2px;transition:box-shadow .35s,transform .25s}
-.post-card-link:hover{box-shadow:0 8px 32px rgba(120,105,81,.12);transform:translateY(-2px)}
-.post-card-date{font-size:clamp(9px,.75vw,11px);color:var(--gold);letter-spacing:.08em;display:block;margin-bottom:4px}
-.post-card-title{font-size:clamp(14px,1.1vw,17px);font-weight:700;color:var(--text);margin-bottom:4px;transition:color .2s}
-.post-card-link:hover .post-card-title{color:var(--gold)}
-.post-card-excerpt{font-size:clamp(11px,.9vw,13px);color:var(--muted);line-height:1.6;margin-bottom:8px}
-.post-card-tags{display:flex;flex-wrap:wrap;gap:5px}
-.post-tag{font-size:clamp(8px,.65vw,10px);padding:2px 8px;background:var(--tag-bg);color:var(--text2);border:1px solid var(--border);border-radius:2px}
-.post-card-more{text-align:center;margin-top:16px}.post-card-more a{font-size:clamp(11px,.9vw,13px);color:var(--gold);text-decoration:none}
-.empty-block{text-align:center;padding:60px 20px}.empty-icon{margin-bottom:12px;color:var(--gold)}.empty-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px}.empty-desc{font-size:13px;color:var(--muted)}
-/* 移动端：文章流置顶，侧栏压缩成横排简介条 */
-@media (max-width:768px){
-  .main-content{flex-direction:column;gap:20px}
-  .profile-sidebar{width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border-bottom:1px dotted var(--card-border);padding-bottom:16px}
-  .profile-img,.profile-avatar{margin-bottom:0}
-  .profile-name{margin-bottom:0}
-  .profile-bio{flex-basis:100%;margin-bottom:0}
-  .profile-divider{display:none}
-  .profile-stats,.profile-links{margin-bottom:0}
-}
-/* 减少动态效果：打字/弹跳/渐入动画停用，直接呈现终态 */
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.4}}
+.post-card{animation:fadeUp .7s ease-in-out both}
+@keyframes fadeUp{from{opacity:0}to{opacity:1}}
+/* 减少动态效果：打字/呼吸/渐入动画停用，直接呈现终态 */
 @media (prefers-reduced-motion: reduce){
   .hero-typing{animation:none;border-right:none;width:auto}
   .hero-sub{animation:none;opacity:1}

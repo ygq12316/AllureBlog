@@ -1,33 +1,43 @@
 <template>
   <PageShell title="文章管理" width="wide">
     <template #actions>
-      <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
-      <n-button type="primary" @click="$router.push('/admin/articles/new')">+ 写文章</n-button>
+      <InkButton v-if="selected.length" variant="danger" size="sm" @click="batchDel">删除选中 ({{ selected.length }})</InkButton>
+      <InkButton variant="primary" size="sm" @click="$router.push('/admin/articles/new')">+ 写文章</InkButton>
     </template>
     <div class="panel">
-      <n-data-table :columns="cols" :data="articles" :bordered="false" size="small"
-        :row-key="r => r.id" @update:checked-row-keys="selected = $event" />
+      <InkTable :columns="cols" :data="articles" :row-key="r => r.id" selectable
+        v-model:checked="selected">
+        <template #cell-title="{ row }">
+          <a class="cursor-pointer text-accent-strong transition-colors duration-700 hover:text-ink" @click="router.push(`/admin/articles/${row.id}/edit`)">{{ row.title }}</a>
+        </template>
+        <template #cell-category="{ row }">
+          <InkTag v-if="row.category" tone="sand">{{ row.category }}</InkTag>
+        </template>
+        <template #cell-status="{ row }">
+          <InkTag :tone="row.is_published ? 'moss' : 'default'">{{ row.is_published ? '已发布' : '草稿' }}</InkTag>
+        </template>
+        <template #actions="{ row }">
+          <InkButton variant="link" size="xs" @click="router.push(`/admin/articles/${row.id}/edit`)">编辑</InkButton>
+        </template>
+      </InkTable>
     </div>
   </PageShell>
 </template>
 <script setup>
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NTag, useMessage } from 'naive-ui'
+import { toast } from '../../composables/useToast'
 import { listArticles, removeArticle } from '../../api/articles'
 import PageShell from '../../components/admin/PageShell.vue'
 
 const router = useRouter()
-const message = useMessage()
 const articles = ref([]), selected = ref([])
 
 const cols = [
-  { type: 'selection', width: 40 },
-  { title: '标题', key: 'title', width: '*', render(row) { return h('a', { style: 'color:var(--gold);cursor:pointer', onClick: () => router.push(`/admin/articles/${row.id}/edit`) }, row.title) } },
-  { title: '分类', key: 'category', width: 80, render(row) { return row.category ? h(NTag, { size: 'tiny', bordered: false }, { default: () => row.category }) : '' } },
-  { title: '状态', width: 70, render(row) { return h(NTag, { size: 'tiny', type: row.is_published ? 'success' : 'warning', bordered: false }, { default: () => row.is_published ? '已发布' : '草稿' }) } },
-  { title: '日期', width: 110, render(row) { return new Date(row.created_at).toLocaleDateString('zh-CN') } },
-  { title: '', width: 50, render(row) { return h(NButton, { size: 'tiny', onClick: () => router.push(`/admin/articles/${row.id}/edit`) }, { default: () => '编辑' }) } },
+  { title: '标题', key: 'title', slot: true, ellipsis: true },
+  { title: '分类', key: 'category', width: 90, slot: true },
+  { title: '状态', key: 'status', width: 80, slot: true },
+  { title: '日期', key: 'created_at', width: 110, render(row) { return new Date(row.created_at).toLocaleDateString('zh-CN') } },
 ]
 
 onMounted(async () => { articles.value = (await listArticles({ all: 'true' })).articles || [] })
@@ -37,7 +47,7 @@ async function batchDel() {
     articles.value = articles.value.filter(a => !selected.value.includes(a.id))
     selected.value = []
   } catch (e) {
-    message.error('批量删除失败')
+    toast.error('批量删除失败')
   }
 }
 </script>

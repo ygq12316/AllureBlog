@@ -96,21 +96,20 @@ onUnmounted(() => {
 
 <style>
 .cloud .tagcloud--item {
-  color: var(--text) !important;
-  font-weight: 500;
+  color: var(--ink) !important;
+  font-weight: 400;
   font-family: 'LXGW WenKai', serif !important;
   padding: 5px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--gold) 6%, var(--bg));
-  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  transition: color .15s, background-color .15s, border-color .15s;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  border: 1px solid var(--line);
+  transition: color .7s ease-in-out, background-color .7s ease-in-out, border-color .7s ease-in-out;
 }
 .cloud .tagcloud--item:hover,
 .cloud .tagcloud--item:focus-visible {
-  color: var(--gold) !important;
-  background: color-mix(in srgb, var(--gold) 12%, var(--bg));
-  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
-  text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 40%, transparent);
+  color: var(--accent-strong) !important;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent);
 }
 </style>
 
@@ -118,17 +117,14 @@ onUnmounted(() => {
 .cloud-wrap { position: relative; width: min(560px, 92vw); aspect-ratio: 1; margin: 0 auto; }
 .glow {
   position: absolute; inset: 4%; border-radius: 50%;
-  /* 墨晕圈：中心微染，球缘一圈晕开的金环，勾出球体轮廓 */
+  /* 墨晕圈：中心微染，球缘一圈晕开的淡墨环，勾出球体轮廓 */
   background: radial-gradient(circle,
-    color-mix(in srgb, var(--gold) 5%, transparent) 0%,
-    color-mix(in srgb, var(--gold) 3%, transparent) 50%,
-    color-mix(in srgb, var(--gold) 18%, transparent) 64%,
-    color-mix(in srgb, var(--gold) 6%, transparent) 74%,
+    color-mix(in srgb, var(--ink) 4%, transparent) 0%,
+    color-mix(in srgb, var(--ink) 2%, transparent) 50%,
+    color-mix(in srgb, var(--ink) 10%, transparent) 64%,
+    color-mix(in srgb, var(--ink) 4%, transparent) 74%,
     transparent 80%);
-  border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent);
-  box-shadow:
-    0 0 90px color-mix(in srgb, var(--gold) 7%, transparent),
-    inset 0 0 70px color-mix(in srgb, var(--gold) 5%, transparent);
+  border: 1px solid var(--line2);
   pointer-events: none;
 }
 .cloud {

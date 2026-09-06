@@ -1,72 +1,50 @@
 <template>
-  <div class="wrap">
+  <div class="max-w-[1100px] mx-auto">
     <!-- 顶栏 -->
     <div class="editor-topbar">
-      <n-button text size="small" @click="$router.push('/admin/articles')">
-        <n-icon size="14" :component="ArrowBackIcon" /> 返回
-      </n-button>
-      <span class="count">{{ form.content.length }} 字</span>
+      <InkButton variant="link" size="sm" @click="$router.push('/admin/articles')">
+        <span class="inline-flex items-center gap-1"><ArrowBackIcon class="w-3.5 h-3.5" /> 返回</span>
+      </InkButton>
+      <span class="text-[13px] text-ink3 font-mono">{{ form.content.length }} 字</span>
       <div class="editor-topbar-side">
-        <n-popconfirm v-if="isEdit" @positive-click="del" positive-text="确认删除" negative-text="取消">
-          <template #trigger><n-button text size="small" type="error">删除</n-button></template>
-          确定删除这篇文章？此操作不可恢复。
-        </n-popconfirm>
-        <n-button type="primary" @click="save" :disabled="!canPublish" :loading="saving">发布</n-button>
+        <InkPopconfirm v-if="isEdit" text="确定删除这篇文章？此操作不可恢复。" @confirm="del">
+          <template #trigger><InkButton variant="danger" size="sm">删除</InkButton></template>
+        </InkPopconfirm>
+        <InkButton variant="primary" @click="save" :disabled="!canPublish" :loading="saving">发布</InkButton>
       </div>
     </div>
 
     <!-- 标题区 -->
-    <input
-      v-model="form.title"
-      class="title-input"
-      placeholder="文章标题..."
-      autofocus
-    />
+    <input v-model="form.title" placeholder="文章标题..." autofocus
+      class="w-full border-0 bg-transparent text-[28px] font-light tracking-wide text-ink pb-4 outline-none caret-[var(--accent)] placeholder:text-ink3/50" />
 
     <!-- 元信息 -->
-    <div class="meta-row">
-      <div class="meta-item">
-        <span class="meta-label">分类</span>
-        <n-select
-          v-model:value="form.category"
-          placeholder="选择分类"
-          clearable
-          :options="cats"
-          size="small"
-          class="meta-select"
-        />
+    <div class="flex flex-wrap items-center gap-5 pb-3.5 border-b border-line">
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-ink3 whitespace-nowrap tracking-wider">分类</span>
+        <span class="w-[140px] inline-block">
+          <InkSelect v-model="form.category" placeholder="选择分类" clearable :options="cats" />
+        </span>
       </div>
-      <div class="meta-item meta-tags">
-        <span class="meta-label">标签</span>
-        <n-select
-          v-model:value="tags"
-          placeholder="添加标签..."
-          multiple
-          filterable
-          tag
-          clearable
-          :options="tagOptions"
-          size="small"
-          class="meta-select-tags"
-        />
+      <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+        <span class="text-xs text-ink3 whitespace-nowrap tracking-wider">标签</span>
+        <span class="flex-1 max-w-[480px] inline-block">
+          <TagInput v-model="tags" :suggestions="tagOptions" placeholder="添加标签..." />
+        </span>
       </div>
     </div>
 
     <!-- 编辑区 -->
-    <div class="editor">
-      <div class="editor-pane">
-        <div class="pane-label">MARKDOWN</div>
-        <textarea
-          v-model="form.content"
-          class="editor-textarea"
-          placeholder="开始写作..."
-          spellcheck="false"
-        />
+    <div class="flex min-h-[520px] border border-line mt-3 overflow-hidden">
+      <div class="flex-1 p-4 px-5 flex flex-col border-r border-line">
+        <div class="text-[10px] text-accent tracking-[2px] mb-2.5 shrink-0">MARKDOWN</div>
+        <textarea v-model="form.content" placeholder="开始写作..." spellcheck="false"
+          class="flex-1 w-full border-0 bg-transparent resize-none outline-none font-mono text-[13px] leading-[1.8] text-ink caret-[var(--accent)] placeholder:text-ink3/40" />
       </div>
-      <div class="editor-pane preview">
-        <div class="pane-label">预览</div>
+      <div class="flex-1 p-4 px-5 flex flex-col bg-paper2">
+        <div class="text-[10px] text-accent tracking-[2px] mb-2.5 shrink-0">预览</div>
         <div v-if="form.content" v-html="preview" class="preview-body" />
-        <div v-else class="preview-placeholder">右侧编辑区的内容将实时渲染于此</div>
+        <div v-else class="flex-1 flex items-center justify-center text-[13px] text-ink3/50">右侧编辑区的内容将实时渲染于此</div>
       </div>
     </div>
   </div>
@@ -76,7 +54,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowBackOutline } from '@vicons/ionicons5'
-import { useMessage } from 'naive-ui'
+import { toast } from '../../composables/useToast'
 import { listCategories } from '../../api/categories'
 import { listTags } from '../../api/tags'
 import { getArticle, createArticle, updateArticle, removeArticle } from '../../api/articles'
@@ -84,7 +62,6 @@ import { getArticle, createArticle, updateArticle, removeArticle } from '../../a
 const ArrowBackIcon = ArrowBackOutline
 const route = useRoute()
 const router = useRouter()
-const message = useMessage()
 const categories = ref([])
 const tagList = ref([])
 const tags = ref([])
@@ -95,7 +72,7 @@ const saving = ref(false)
 const isEdit = computed(() => !!route.params.id)
 const cats = computed(() => categories.value.map(c => ({ label: c.name, value: c.name })))
 const canPublish = computed(() => form.value.title.trim() && form.value.content.trim())
-const tagOptions = computed(() => tagList.value.map(t => ({ label: t.name, value: t.name })))
+const tagOptions = computed(() => tagList.value.map(t => t.name))
 
 // 监听 tags 数组变化，同步到 form.tags 字符串
 watch(tags, v => { form.value.tags = v.join(',') })
@@ -140,7 +117,7 @@ async function save() {
     else await createArticle(form.value)
     router.push('/admin/articles')
   } catch (e) {
-    message.error(e.response?.data?.error || '发布失败')
+    toast.error(e.response?.data?.error || '发布失败')
     saving.value = false
   }
 }
@@ -152,141 +129,29 @@ async function del() {
     await removeArticle(id)
     router.push('/admin/articles')
   } catch (e) {
-    message.error('删除失败')
+    toast.error('删除失败')
   }
 }
 </script>
 
 <style scoped>
-.wrap { max-width: 1100px; margin: 0 auto; }
-
-.count { font-size: 13px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
-
-/* 标题 */
-.title-input {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-family: 'LXGW WenKai', serif;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text);
-  padding: 0 0 16px 0;
-  outline: none;
-  caret-color: var(--gold);
-}
-.title-input::placeholder {
-  color: var(--muted);
-  opacity: 0.5;
-}
-
-/* 元信息行 */
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--card-border);
-  margin-bottom: 0;
-}
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.meta-label {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-}
-.meta-select {
-  width: 140px;
-}
-.meta-tags {
-  flex: 1;
-  min-width: 200px;
-}
-.meta-select-tags {
-  flex: 1;
-  max-width: 480px;
-}
-
-/* 编辑&预览区 */
-.editor {
-  display: flex;
-  gap: 0;
-  min-height: 520px;
-  border: 1px solid var(--card-border);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 12px;
-}
-.editor-pane {
-  flex: 1;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-}
-.editor-pane:first-child {
-  border-right: 1px solid var(--card-border);
-}
-.preview {
-  background: var(--card);
-}
-.pane-label {
-  font-size: 10px;
-  color: var(--gold);
-  letter-spacing: 2px;
-  margin-bottom: 10px;
-  flex-shrink: 0;
-}
-.editor-textarea {
-  flex: 1;
-  width: 100%;
-  border: none;
-  background: transparent;
-  resize: none;
-  outline: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  line-height: 1.8;
-  color: var(--text);
-  caret-color: var(--gold);
-}
-.editor-textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.4;
-}
 .preview-body {
   flex: 1;
-  font-family: 'LXGW WenKai', serif;
   font-size: 14px;
   line-height: 1.9;
-  color: var(--text);
+  color: var(--ink);
   overflow-y: auto;
 }
-.preview-body :deep(h1) { font-size: 22px; margin: 0 0 12px; }
-.preview-body :deep(h2) { font-size: 18px; margin: 16px 0 8px; color: var(--gold); }
-.preview-body :deep(h3) { font-size: 15px; margin: 12px 0 6px; }
+.preview-body :deep(h1) { font-size: 22px; font-weight: 400; margin: 0 0 12px; }
+.preview-body :deep(h2) { font-size: 18px; font-weight: 400; margin: 16px 0 8px; color: #6b7b6e; }
+.preview-body :deep(h3) { font-size: 15px; font-weight: 400; margin: 12px 0 6px; }
 .preview-body :deep(p) { margin: 0 0 10px; }
-.preview-body :deep(strong) { color: var(--gold); }
+.preview-body :deep(strong) { font-weight: 400; color: var(--accent-strong); border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .preview-body :deep(code) {
-  background: var(--tag-bg);
-  color: var(--gold);
+  background: var(--paper);
+  color: var(--accent-strong);
   padding: 1px 6px;
-  border-radius: 3px;
   font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-}
-.preview-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  color: var(--muted);
-  opacity: 0.5;
-  font-family: 'LXGW WenKai', serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 </style>

@@ -1,48 +1,52 @@
 <template>
-  <div style="min-height:100vh;background:var(--bg)">
+  <div class="min-h-screen bg-paper">
     <!-- 粒子背景（主内容区后方） -->
     <canvas ref="canvas" class="particle-canvas" />
     <div ref="glow" class="mouse-glow" />
 
-    <n-config-provider :theme-overrides="themeOverrides">
-      <div class="shell">
-        <!-- 侧边栏：固定深墨色，明暗主题下不变 -->
-        <aside class="sider" :class="{ collapsed }">
-          <div class="brand">
-            <span class="brand-mark">✽</span>
-            <span v-if="!collapsed" class="brand-name">笔墨后台</span>
-          </div>
-          <n-menu
-            v-model:value="activeMenu"
-            :options="menuOptions"
-            :collapsed="collapsed"
-            :collapsed-width="64"
-            :collapsed-icon-size="20"
-            class="sider-menu"
-            @update:value="onMenuClick"
-          />
-          <div class="sider-foot">
-            <ThemeToggle />
-            <button v-if="!collapsed" class="sider-link" @click="goBlog">← 博客</button>
-          </div>
-        </aside>
+    <div class="flex min-h-screen relative z-[1]">
+      <!-- 侧边栏：宣纸底 + 细墨线 -->
+      <aside class="sticky top-0 h-screen flex flex-col shrink-0 overflow-hidden border-r border-line bg-paper2 transition-[width] duration-700 ease-in-out"
+        :style="{ width: collapsed ? '64px' : '220px' }">
+        <div class="flex items-center gap-2.5 px-5 pt-6 pb-3 whitespace-nowrap text-[15px] tracking-[0.25em] text-ink">
+          <span class="text-lg leading-none text-accent shrink-0">✽</span>
+          <span v-if="!collapsed">笔墨后台</span>
+        </div>
+        <nav class="flex-1 flex flex-col gap-0.5 px-2.5 py-2" aria-label="后台导航">
+          <router-link v-for="m in MENUS" :key="m.key" :to="m.to"
+            class="flex items-center gap-3 px-3.5 py-2.5 text-sm font-light no-underline transition-colors duration-700"
+            :class="activeKey === m.key
+              ? 'bg-ink/5 text-ink'
+              : 'text-ink3 hover:text-ink hover:bg-ink/5'"
+            :title="m.label">
+            <component :is="m.icon" class="w-[18px] h-[18px] shrink-0" :class="activeKey === m.key ? 'text-accent-strong' : ''" />
+            <span v-if="!collapsed">{{ m.label }}</span>
+          </router-link>
+        </nav>
+        <div class="flex flex-col items-start gap-3 px-4 py-4 border-t border-line2">
+          <ThemeToggle />
+          <button v-if="!collapsed" class="bg-transparent border-0 p-0 cursor-pointer text-sm font-light text-ink3 hover:text-ink transition-colors duration-700" @click="goBlog">← 博客</button>
+        </div>
+      </aside>
 
-        <!-- 折叠开关（贴主内容区左缘） -->
-        <button class="collapse-btn" :class="{ shifted: collapsed }" @click="collapsed = !collapsed" :title="collapsed ? '展开菜单' : '收起菜单'">
-          {{ collapsed ? '»' : '«' }}
-        </button>
+      <!-- 折叠开关（贴主内容区左缘） -->
+      <button class="fixed top-3.5 z-20 w-[22px] h-11 bg-card border border-line text-ink3 cursor-pointer text-xs transition-[left] duration-700 ease-in-out hover:text-accent-strong hover:border-accent"
+        :style="{ left: collapsed ? '72px' : '228px' }" @click="collapsed = !collapsed"
+        :title="collapsed ? '展开菜单' : '收起菜单'" :aria-label="collapsed ? '展开菜单' : '收起菜单'">
+        {{ collapsed ? '»' : '«' }}
+      </button>
 
-        <!-- 主内容区 -->
-        <main class="admin-content"><router-view /></main>
-      </div>
-    </n-config-provider>
+      <!-- 主内容区 -->
+      <main class="admin-content flex-1 min-w-0 relative z-[1] px-6 md:px-12 py-8 md:py-10 text-[15px]">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, h } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NIcon } from 'naive-ui'
 import {
   SpeedometerOutline, DocumentTextOutline, ChatbubbleEllipsesOutline,
   FilmOutline, FolderOpenOutline, PricetagsOutline, PeopleOutline, SettingsOutline,
@@ -54,35 +58,25 @@ const route = useRoute(), router = useRouter()
 const collapsed = ref(false)
 
 // 菜单唯一事实源:新增后台页只需在此加一行(路由另注册一条)
-const renderIcon = comp => () => h(NIcon, null, { default: () => h(comp) })
 const MENUS = [
-  { label: '仪表盘', key: 'dashboard', to: '/admin', icon: renderIcon(SpeedometerOutline) },
-  { label: '文章', key: 'articles', to: '/admin/articles', icon: renderIcon(DocumentTextOutline) },
-  { label: '随笔', key: 'notes', to: '/admin/notes', icon: renderIcon(ChatbubbleEllipsesOutline) },
-  { label: '弹幕', key: 'danmakus', to: '/admin/danmakus', icon: renderIcon(FilmOutline) },
-  { label: '分类', key: 'categories', to: '/admin/categories', icon: renderIcon(FolderOpenOutline) },
-  { label: '标签', key: 'tags', to: '/admin/tags', icon: renderIcon(PricetagsOutline) },
-  { label: '访客', key: 'visitors', to: '/admin/visitors', icon: renderIcon(PeopleOutline) },
-  { label: '设置', key: 'settings', to: '/admin/settings', icon: renderIcon(SettingsOutline) },
+  { label: '仪表盘', key: 'dashboard', to: '/admin', icon: SpeedometerOutline },
+  { label: '文章', key: 'articles', to: '/admin/articles', icon: DocumentTextOutline },
+  { label: '随笔', key: 'notes', to: '/admin/notes', icon: ChatbubbleEllipsesOutline },
+  { label: '弹幕', key: 'danmakus', to: '/admin/danmakus', icon: FilmOutline },
+  { label: '分类', key: 'categories', to: '/admin/categories', icon: FolderOpenOutline },
+  { label: '标签', key: 'tags', to: '/admin/tags', icon: PricetagsOutline },
+  { label: '访客', key: 'visitors', to: '/admin/visitors', icon: PeopleOutline },
+  { label: '设置', key: 'settings', to: '/admin/settings', icon: SettingsOutline },
 ]
-const menuOptions = MENUS
 
 // 高亮从路径推导:取 /admin 后的第一段,仪表盘精确匹配
-const activeMenu = computed(() => {
+const activeKey = computed(() => {
   const p = route.path
   if (p === '/admin' || p === '/admin/') return 'dashboard'
   const seg = '/' + (p.split('/')[2] || '')
   return MENUS.find(m => m.to === '/admin' + seg)?.key ?? 'dashboard'
 })
-function onMenuClick(key) {
-  const m = MENUS.find(m => m.key === key)
-  if (m) router.push(m.to)
-}
 function goBlog() { window.location.href = '/' }
-
-const themeOverrides = {
-  common: { primaryColor: '#b8944c', primaryColorHover: '#d4b060', borderRadius: '4px' },
-}
 
 // 粒子背景(与公开侧共用 useParticles)
 const { canvas, glow } = useParticles()
@@ -93,42 +87,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize) })
 </script>
 
 <style scoped>
-.particle-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0 }
-.mouse-glow { position: fixed; top: 0; left: 0; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(184, 148, 76, .06) 0%, transparent 70%); pointer-events: none; z-index: 0; opacity: 0; transition: opacity .6s }
-
-.shell { display: flex; min-height: 100vh; position: relative; z-index: 1 }
-
-/* 侧边栏：深墨底 + 金色高亮，主题切换不影响 */
-.sider {
-  width: 220px; flex-shrink: 0; background: #26211a; border-right: 1px solid #3d3830;
-  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
-  transition: width .2s; overflow: hidden;
+@media (prefers-reduced-motion: reduce) {
+  aside, .admin-content { transition: none; }
 }
-.sider.collapsed { width: 64px }
-.brand { display: flex; align-items: center; gap: 10px; padding: 18px 20px 14px; color: #d8b96a; font-weight: 700; font-size: 15px; white-space: nowrap }
-.brand-mark { font-size: 18px; flex-shrink: 0 }
-.sider-menu { flex: 1; background: transparent; --n-item-text-color: #9c8f76; --n-item-text-color-hover: #e8dcc0; --n-item-text-color-active: #26211a; --n-item-text-color-active-hover: #26211a; --n-item-color-active: #d8b96a; --n-item-color-active-hover: #e2c678; --n-item-icon-color: #9c8f76; --n-item-icon-color-hover: #e8dcc0; --n-item-icon-color-active: #26211a; --n-item-color-active-collapsed: #d8b96a; --n-arrow-color: #9c8f76; --n-item-text-color-child-active: #d8b96a; --n-item-icon-color-child-active: #d8b96a; }
-.sider-foot { padding: 14px 16px; border-top: 1px solid #3d3830; display: flex; flex-direction: column; gap: 10px; align-items: flex-start }
-.sider-link { background: none; border: none; color: #9c8f76; font-size: 13px; cursor: pointer; font-family: inherit; padding: 0 }
-.sider-link:hover { color: #e8dcc0 }
-
-/* 折叠按钮 */
-.collapse-btn {
-  position: fixed; top: 14px; left: 228px; z-index: 20; width: 22px; height: 44px;
-  background: var(--card); border: 1px solid var(--card-border); border-radius: 6px;
-  color: var(--muted); cursor: pointer; transition: left .2s; font-size: 12px;
-}
-.collapse-btn:hover { color: var(--gold); border-color: var(--gold) }
-.collapse-btn.shifted { left: 72px }
-
-/* 主内容区 */
-.admin-content { flex: 1; min-width: 0; padding: clamp(20px, 3vh, 32px) clamp(16px, 5vw, 48px); position: relative; z-index: 1; font-size: 15px; }
-
-/* 深色输入框：覆盖 Naive UI 默认白色背景 */
-:deep(.n-input) { --n-color: transparent !important; --n-color-focus: transparent !important; --n-text-color: var(--text) !important; --n-placeholder-color: var(--muted) !important; --n-border: 1px solid var(--card-border) !important; --n-border-focus: 1px solid var(--gold) !important; --n-border-hover: 1px solid var(--gold) !important; --n-box-shadow-focus: 0 0 0 2px rgba(184, 148, 76, 0.15) !important; }
-:deep(.n-base-selection) { --n-color: transparent !important; --n-color-active: transparent !important; --n-text-color: var(--text) !important; --n-border: 1px solid var(--card-border) !important; --n-border-focus: 1px solid var(--gold) !important; --n-border-hover: 1px solid var(--gold) !important; }
-:deep(.n-base-select-menu) { --n-color: var(--card) !important; }
-:deep(.n-base-selection-label) { --n-text-color: var(--text) !important; background: transparent !important; }
-:deep(.n-base-selection-tag) { --n-color: var(--tag-bg) !important; }
-:deep(.n-dynamic-tags .n-input) { --n-color: transparent !important; --n-color-focus: transparent !important; }
 </style>

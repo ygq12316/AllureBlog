@@ -1,18 +1,18 @@
 <template>
-  <div class="page">
-    <div class="header">
-      <h2 class="title">随笔 · 说说</h2>
-      <p class="sub">一切随心，随手记下</p>
+  <div class="flex flex-col h-full">
+    <div class="text-center shrink-0 pt-8 pb-4">
+      <h2 class="text-xl md:text-2xl font-light tracking-[0.2em] text-ink m-0 mb-1">随笔 · 说说</h2>
+      <p class="text-xs text-ink3 m-0">一切随心，随手记下</p>
     </div>
-    <div v-if="!notes.length" class="empty"><n-empty description="还没有随笔" /></div>
+    <div v-if="!notes.length" class="flex-1 flex items-center justify-center"><InkEmpty description="还没有随笔" /></div>
     <div v-else class="board">
-      <div v-for="(n, i) in pinned" :key="n.id" class="note-wrap" :style="{ animationDelay: (i * 70) + 'ms' }">
+      <div v-for="(n, i) in pinned" :key="n.id" class="note-wrap" :style="{ animationDelay: (i * 80) + 'ms' }">
         <router-link :to="'/notes/'+n.id" class="note" :style="noteStyle(n.id, i)">
           <div class="pin" />
           <div class="tape" :class="'tape-'+((i*7+3)%4)" />
           <div v-if="imgs(n.images).length" class="note-imgs" :class="'note-imgs--'+Math.min(imgs(n.images).length, 4)">
             <div v-for="(u, j) in imgs(n.images).slice(0, 4)" :key="j" class="img-cell">
-              <img :src="u" loading="lazy" @error="e=>e.target.parentNode.style.display='none'" />
+              <img :src="u" loading="lazy" alt="" @error="e=>e.target.parentNode.style.display='none'" />
               <span v-if="j === 3 && imgs(n.images).length > 4" class="img-more">+{{ imgs(n.images).length - 4 }}</span>
             </div>
           </div>
@@ -31,6 +31,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { listNotes } from '../api/notes'
 import { rel } from '../utils/format'
+import InkEmpty from '../components/ui/InkEmpty.vue'
 
 const notes = ref([])
 
@@ -48,25 +49,26 @@ onUnmounted(() => themeObs?.disconnect())
 
 const pinned = computed(() => notes.value.slice(0, 12))
 
+// 宣纸色系便签：淡墨、苔青、茶赭、灰紫，浓淡相间
 const paperColors = [
-  { bg: '#fef9e7', edge: '#f0e5c5', ink: '#5c4a3a' },
-  { bg: '#fdf2f2', edge: '#f0d8d8', ink: '#5a3a3a' },
-  { bg: '#f2f7fd', edge: '#d8e5f0', ink: '#3a4a5a' },
-  { bg: '#f5faf3', edge: '#e0ece0', ink: '#3a5a3a' },
-  { bg: '#fef8f0', edge: '#f0e0d0', ink: '#5a4a3a' },
-  { bg: '#faf5fe', edge: '#e8d8f0', ink: '#4a3a5a' },
-  { bg: '#fdfaf0', edge: '#f0ecd8', ink: '#5a5a3a' },
-  { bg: '#f5f5f0', edge: '#e8e5d8', ink: '#4a4a3a' },
+  { bg: '#f7f2e8', edge: '#e5dcc8', ink: '#4a4438' },
+  { bg: '#eef0e6', edge: '#d5dbc8', ink: '#44503f' },
+  { bg: '#efe9dd', edge: '#ddd2bd', ink: '#55483a' },
+  { bg: '#e9ede9', edge: '#d2d9d2', ink: '#3f4a42' },
+  { bg: '#f4ece0', edge: '#e2d5c2', ink: '#54463a' },
+  { bg: '#efe9ec', edge: '#dbd2de', ink: '#4d4252' },
+  { bg: '#f7f3e4', edge: '#e6dfc5', ink: '#55503c' },
+  { bg: '#f0efeb', edge: '#dedcd4', ink: '#4a4844' },
 ]
 
 // 暗色纸系：深纸、柔边、浅墨
 const paperColorsDark = [
-  { bg: '#3a342a', edge: '#4c4334', ink: '#d8cba8' },
-  { bg: '#3c2f2f', edge: '#4e3d3d', ink: '#d8bfb0' },
-  { bg: '#2f353c', edge: '#3d454e', ink: '#bcc8d8' },
-  { bg: '#2f3a32', edge: '#3d4c40', ink: '#b8d4c2' },
-  { bg: '#3a332a', edge: '#4c4234', ink: '#d4c4a4' },
-  { bg: '#34303c', edge: '#443e50', ink: '#ccc0dc' },
+  { bg: '#2e2a24', edge: '#3d372e', ink: '#cfc5b2' },
+  { bg: '#2a2e28', edge: '#3a4038', ink: '#b8c4b2' },
+  { bg: '#302b26', edge: '#423a32', ink: '#c4b8a2' },
+  { bg: '#262b2d', edge: '#353d40', ink: '#aebfc4' },
+  { bg: '#2d2830', edge: '#3e3646', ink: '#c0b2c4' },
+  { bg: '#322e26', edge: '#454033', ink: '#ccc2a6' },
 ]
 
 function hash(s, i) {
@@ -95,13 +97,7 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
 </script>
 
 <style scoped>
-.page { height: 100%; display: flex; flex-direction: column; padding: 0; }
-.header { text-align: center; flex-shrink: 0; padding: clamp(28px, 5vh, 40px) 0 16px; }
-.title { font-size: clamp(20px, 2vw, 26px); font-weight: 700; color: var(--text); margin: 0 0 4px; }
-.sub { font-size: clamp(11px, .9vw, 13px); color: var(--muted); margin: 0; }
-.empty { flex: 1; display: flex; align-items: center; justify-content: center; }
-
-/* 软木板效果 */
+/* 软木板 */
 .board {
   flex: 1;
   display: grid;
@@ -116,39 +112,36 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
   position: relative;
   justify-self: center;
   max-width: 280px; width: 100%;
-  animation: noteIn .5s cubic-bezier(.4, 0, .2, 1) both;
+  animation: noteIn .7s ease-in-out both;
 }
 .note-wrap:hover { z-index: 10; }
-@keyframes noteIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes noteIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* 便签 */
 .note {
   position: relative;
   width: 100%;
-  border: 2px solid;
-  border-radius: 2px 2px 4px 4px;
+  border: 1px solid;
   text-decoration: none;
-  box-shadow: 2px 3px 8px rgba(0, 0, 0, .08), 0 1px 3px rgba(0, 0, 0, .05);
-  transition: transform .3s cubic-bezier(.4, 0, .2, 1), box-shadow .3s;
+  transition: box-shadow .7s ease-in-out, filter .7s ease-in-out;
   padding: 20px 14px 14px;
   display: flex; flex-direction: column;
   overflow: visible;
 }
 .note:hover {
-  transform: scale(1.06) rotate(0deg) !important;
-  box-shadow: 4px 8px 24px rgba(0, 0, 0, .15);
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
+  filter: brightness(.98);
 }
-.note:active { transform: scale(1.02) rotate(0deg) !important; }
-.note:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.note:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
 
-/* 图钉 */
+/* 图钉：墨点 */
 .pin {
   position: absolute;
-  top: -8px; left: 50%; transform: translateX(-50%);
-  width: 14px; height: 14px;
+  top: -6px; left: 50%; transform: translateX(-50%);
+  width: 10px; height: 10px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #f0d0a0, #c89040 50%, #8a6020);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .3);
+  background: var(--ink);
+  opacity: .85;
   z-index: 2;
 }
 
@@ -156,7 +149,7 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
 .tape {
   position: absolute;
   width: 36px; height: 14px;
-  background: rgba(255, 255, 255, .45);
+  background: rgba(255, 255, 255, .4);
   border: 1px solid rgba(0, 0, 0, .04);
   z-index: 1;
 }
@@ -177,7 +170,6 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
   position: relative;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 2px;
   background: rgba(0, 0, 0, .04);
 }
 .note-imgs--1 .img-cell { aspect-ratio: 4 / 3; }
@@ -187,7 +179,7 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   background: rgba(0, 0, 0, .45);
-  color: #fff; font-size: 15px; font-weight: 600;
+  color: #fff; font-size: 15px; font-weight: 400;
 }
 
 .note-body {
@@ -210,20 +202,19 @@ function imgs(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean) : 
 }
 .note-time { font-size: 10px; opacity: .65; }
 .note-more {
-  font-size: 11px; font-weight: 600;
-  opacity: 0; transform: translateX(-4px);
-  transition: opacity .2s, transform .2s;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity .7s ease-in-out;
 }
 .note:hover .note-more,
-.note:focus-visible .note-more { opacity: .9; transform: none; }
+.note:focus-visible .note-more { opacity: .9; }
 /* 触屏无 hover，常显弱化版 */
 @media (hover: none) {
-  .note-more { opacity: .55; transform: none; }
+  .note-more { opacity: .55; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .note-wrap { animation: none; }
   .note, .note-more { transition: none; }
-  .note:hover, .note:active { transform: none; }
 }
 </style>

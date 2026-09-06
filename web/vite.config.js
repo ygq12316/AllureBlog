@@ -1,13 +1,14 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import tailwindcss from '@tailwindcss/vite'
 import Components from 'unplugin-vue-components/vite'
-import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   plugins: [
     vue(),
-    // naive-ui 按需引入：模板里的 n-* 组件编译期自动解析，替代全量 app.use(naive)
-    Components({ resolvers: [NaiveUiResolver()] }),
+    tailwindcss(),
+    // ui 基件按需自动引入（src/components/ui），其余组件显式 import
+    Components({ dirs: ['src/components/ui'] }),
   ],
   server: {
     proxy: {

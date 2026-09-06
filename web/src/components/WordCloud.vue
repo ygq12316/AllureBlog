@@ -16,17 +16,17 @@ const sorted = computed(() =>
   [...props.tags].sort((a, b) => (b.article_count || 0) - (a.article_count || 0))
 )
 
-// 从深墨到鎏金：热度越高越接近金色
+// 墨分五色：热度越高墨色越淡雅（浓墨 → 淡彩）
 const palette = [
-  '#4a3a2a', '#5c4a3a', '#6a5a48', '#7a6a50',
-  '#8a7a68', '#9a8a6a', '#a88a5c', '#b0906c',
-  '#c0a878', '#c4a060', '#d4b468', '#b8944c',
+  '#2c2c2c', '#454540', '#55524b', '#5c6158',
+  '#6b7b6e', '#7a8578', '#8a8072', '#96897a',
+  '#a89279', '#b0a08a', '#bcae97', '#c4b9a8',
 ]
-// 暗色模式换浅色系，避免深墨字沉进暗背景
+// 暗色模式换浅墨系，避免深墨字沉进暗背景
 const darkPalette = [
-  '#8a7a68', '#9a8a6a', '#a89880', '#b8a890',
-  '#c0a878', '#c4a060', '#d4b060', '#d4b468',
-  '#e0c078', '#e8cc88', '#f0d898', '#f4e0a8',
+  '#8a8072', '#96907e', '#a89e88', '#b5ab99',
+  '#bcae97', '#c4b9a8', '#cec2ad', '#d8d2c4',
+  '#ddd6c6', '#e2dccd', '#e8e2d6', '#ede8dc',
 ]
 
 let WordCloud = null
@@ -66,7 +66,7 @@ async function render() {
     gridSize: 30,
     weightFactor: 30,
     fontFamily: 'LXGW WenKai, serif',
-    // 热度映射取色：冷门偏墨、热门偏金，刷新不跳色
+    // 热度映射取色：冷门偏浓墨、热门偏淡彩，刷新不跳色
     color: (word, weight) => {
       const norm = span ? (Math.min(weight, hi) - lo) / span : 0.6
       return colors[Math.round(norm * (colors.length - 1))]
@@ -89,8 +89,6 @@ watch(() => props.tags, render, { deep: true })
 </script>
 
 <style scoped>
-.wc-section { text-align: center; }
-.wc-title { font-size: 12px; color: var(--muted); font-weight: 400; margin: 0 0 8px; }
 .wc-stage { max-width: 100%; margin: 0 auto; }
 .wc-canvas { width: 100%; max-width: 100%; height: 480px; display: block; margin: 0 auto; cursor: pointer; }
 </style>

@@ -38,6 +38,9 @@ const routes = [
     ],
   },
 
+  // 登录页（无布局，独立全屏）
+  { path: '/login', name: 'Login', component: () => import('../views/LoginView.vue') },
+
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue') },
 ]
 

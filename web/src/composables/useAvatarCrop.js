@@ -13,8 +13,8 @@ export function useAvatarCrop() {
   // 缩放变化即重绘(原 Settings 版缺此联动,拖动前缩放不生效)
   watch(cropZoom, () => updateCropStyle())
 
-  async function pickImage({ file }) {
-    cropSrc.value = URL.createObjectURL(file.file)
+  async function pickImage(file) {
+    cropSrc.value = URL.createObjectURL(file)
     cropImg = new Image()
     cropImg.src = cropSrc.value
     await new Promise(r => cropImg.onload = r)

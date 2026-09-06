@@ -1,46 +1,51 @@
 <template>
-  <div class="blog-root" style="display:flex;flex-direction:column;min-height:100vh;background:var(--bg);color:var(--text);font-family:'LXGW WenKai',serif;line-height:1.8">
+  <div class="flex flex-col min-h-screen bg-paper text-ink font-serif leading-relaxed transition-colors duration-700">
     <a href="#blog-main" class="skip-link">跳到主内容</a>
     <canvas ref="canvas" class="particle-canvas" />
     <div ref="glow" class="mouse-glow" />
 
-    <!-- 经典三段式导航：品牌+主导航靠左成组，工具（搜索/主题/头像）靠右 -->
-    <nav class="blog-nav" aria-label="主导航">
-      <div class="nav-left">
-        <router-link to="/" class="nav-brand">
-          <n-icon size="18" color="var(--gold)" :component="EditIcon" /> 笔墨
+    <!-- 三段式导航：品牌+主导航靠左成组，工具（搜索/主题/头像）靠右 -->
+    <nav class="sticky top-0 z-50 flex items-center justify-between gap-4 h-14 px-6 md:px-16 bg-paper border-b border-line"
+      aria-label="主导航">
+      <div class="flex items-center gap-8 md:gap-12 min-w-0">
+        <router-link to="/" class="flex items-center gap-1.5 shrink-0 text-base tracking-[0.3em] text-ink no-underline transition-colors duration-700 hover:text-accent-strong">
+          <EditIcon class="w-4 h-4 text-accent" /> 笔墨
         </router-link>
-        <div class="nav-links">
+        <div class="hidden md:flex items-center gap-8">
           <router-link v-for="l in navs" :key="l.to" :to="l.to"
-            class="nav-link" active-class="nav-link--active">{{ l.label }}</router-link>
+            class="px-0.5 py-1.5 text-sm font-light text-ink2 no-underline border-b border-transparent transition-colors duration-700 hover:text-accent-strong hover:border-accent/40"
+            :class="{ '!text-accent-strong !border-accent/60': isActive(l.to) }">{{ l.label }}</router-link>
         </div>
       </div>
-      <div class="nav-right">
-        <router-link to="/search" class="nav-icon-btn" aria-label="搜索文章" title="搜索">
-          <n-icon size="18" :component="SearchIcon" />
+      <div class="flex items-center gap-1.5 md:gap-3 shrink-0">
+        <router-link to="/search" class="w-9 h-9 flex items-center justify-center text-ink2 transition-colors duration-700 hover:text-accent-strong" aria-label="搜索文章" title="搜索">
+          <SearchIcon class="w-[18px] h-[18px]" />
         </router-link>
         <ThemeToggle />
         <UserAvatar />
-        <button class="nav-icon-btn nav-burger" aria-label="打开导航菜单" :aria-expanded="drawerOpen" @click="drawerOpen = true">
-          <n-icon size="20" :component="MenuIcon" />
+        <button class="md:hidden w-9 h-9 flex items-center justify-center text-ink2 transition-colors duration-700 hover:text-accent-strong bg-transparent border-0 cursor-pointer"
+          aria-label="打开导航菜单" :aria-expanded="drawerOpen" @click="drawerOpen = true">
+          <MenuIcon class="w-5 h-5" />
         </button>
       </div>
     </nav>
 
-    <!-- 移动端抽屉导航（≤768px 由汉堡展开） -->
-    <n-drawer v-model:show="drawerOpen" placement="right" :width="drawerWidth" :auto-focus="true">
-      <n-drawer-content title="导航" :native-scrollbar="false">
-        <nav class="drawer-nav" aria-label="移动端导航">
-          <router-link v-for="l in navs" :key="l.to" :to="l.to"
-            class="drawer-link" active-class="drawer-link--active" @click="drawerOpen = false">{{ l.label }}</router-link>
-          <router-link to="/search" class="drawer-link" @click="drawerOpen = false">搜索</router-link>
-        </nav>
-      </n-drawer-content>
-    </n-drawer>
+    <!-- 移动端抽屉导航 -->
+    <InkDrawer v-model:show="drawerOpen" title="导航" max-width="300px">
+      <nav class="flex flex-col py-2" aria-label="移动端导航">
+        <router-link v-for="l in [...navs, { to: '/search', label: '搜索' }]" :key="l.to" :to="l.to"
+          class="px-8 py-3.5 text-[15px] font-light text-ink2 no-underline border-b border-line2 transition-colors duration-700 hover:text-accent-strong"
+          :class="{ '!text-accent-strong': isActive(l.to) }" @click="drawerOpen = false">{{ l.label }}</router-link>
+      </nav>
+    </InkDrawer>
 
-    <main id="blog-main" class="blog-main"><router-view /></main>
+    <main id="blog-main" class="flex-1 relative z-[1] w-full max-w-[1100px] mx-auto px-6 md:px-16 py-10 md:py-14 scroll-mt-16">
+      <router-view />
+    </main>
 
-    <footer class="blog-footer">&copy; 2026 笔墨 &middot; 记录思考，分享生活</footer>
+    <footer class="relative z-[1] text-center py-10 px-6 md:px-16 border-t border-line text-xs font-light tracking-widest text-ink3">
+      &copy; 2026 笔墨 &middot; 记录思考，分享生活
+    </footer>
 
     <VisitorSetup v-if="setupVisible" @close="closeSetup" />
     <FairyChat />
@@ -49,6 +54,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { CreateOutline, SearchOutline, MenuOutline } from '@vicons/ionicons5'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -57,6 +63,7 @@ import FairyChat from '../components/FairyChat.vue'
 import { useVisitor } from '../composables/useVisitor'
 import { useParticles } from '../composables/useParticles'
 
+const route = useRoute()
 const { setupVisible, isSetUp, closeSetup, init } = useVisitor()
 
 onMounted(async () => {
@@ -69,8 +76,6 @@ onMounted(async () => {
 
 const EditIcon = CreateOutline, SearchIcon = SearchOutline, MenuIcon = MenuOutline
 const drawerOpen = ref(false)
-// 抽屉宽度随视口收缩（n-drawer 只接受数值），78vw 上限 300px
-const drawerWidth = Math.min(300, Math.round(window.innerWidth * 0.78))
 // 主页居首，内容板块（文章/随笔）次之，聚合页（分类）收尾；搜索已移作右侧图标
 const navs = [
   { to: '/', label: '主页' },
@@ -78,46 +83,24 @@ const navs = [
   { to: '/notes', label: '随笔' },
   { to: '/category', label: '分类' },
 ]
+// 高亮：主页精确匹配，其余前缀匹配（覆盖 /posts/:slug 等详情页）
+function isActive(to) {
+  if (to === '/') return route.path === '/'
+  return route.path === to || route.path.startsWith(to + '/')
+}
 
 // 水墨粒子背景(与后台共用)
 const { canvas, glow } = useParticles()
 </script>
 
 <style>
-.particle-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; }
-.mouse-glow { position: fixed; top: 0; left: 0; width: 400px; height: 400px; border-radius: 50%; background: radial-gradient(circle, rgba(184,148,76,0.06) 0%, transparent 70%); pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.6s; }
-.skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; padding: 8px 16px; background: var(--card); border: 1px solid var(--gold); border-radius: 2px; color: var(--gold); font-size: 13px; text-decoration: none; }
-.skip-link:focus { left: 16px; }
-.blog-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 52px; padding: 0 clamp(16px, 5vw, 64px); border-bottom: 1px solid var(--card-border); position: sticky; top: 0; z-index: 50; background: var(--bg); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.nav-left { display: flex; align-items: center; gap: clamp(20px, 4vw, 48px); min-width: 0; }
-.nav-brand { font-size: clamp(14px, 1.5vw, 17px); font-weight: 700; color: var(--gold); text-decoration: none; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.nav-links { display: flex; gap: clamp(18px, 3vw, 36px); }
-.nav-link { font-size: clamp(12px, 1.1vw, 14px); color: var(--text); text-decoration: none; padding: 6px 2px; transition: color .2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.nav-link:hover { color: var(--gold); }
-.nav-link--active { color: var(--gold); font-weight: 600; }
-.nav-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.nav-icon-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text2); background: none; border: none; cursor: pointer; text-decoration: none; transition: color .2s, background-color .2s; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.nav-icon-btn:hover { color: var(--gold); }
-.nav-burger { display: none; }
-.blog-main { flex: 1; position: relative; z-index: 1; max-width: 1100px; width: 100%; margin: 0 auto; padding: clamp(24px, 4vh, 48px) clamp(16px, 5vw, 64px); scroll-margin-top: 60px; }
-.blog-footer { text-align: center; padding: 16px clamp(16px, 5vw, 64px); border-top: 1px solid var(--card-border); font-size: clamp(10px, 0.8vw, 12px); color: var(--muted); position: relative; z-index: 1; }
-.drawer-nav { display: flex; flex-direction: column; padding-top: 4px; }
-.drawer-link { padding: 14px 8px; font-size: 15px; color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--card-border); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.drawer-link--active { color: var(--gold); font-weight: 600; }
-/* 键盘焦点环：金色细描边，呼应水墨印章 */
-.nav-link:focus-visible, .nav-brand:focus-visible, .nav-icon-btn:focus-visible, .drawer-link:focus-visible, .skip-link:focus {
-  outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 2px;
-}
-/* 移动端：主导航收进抽屉，工具区压缩间距 */
+/* 键盘焦点环 */
+.nav :focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+/* 移动端：主导航收进抽屉 */
 @media (max-width: 768px) {
   .nav-links { display: none; }
-  .nav-burger { display: flex; }
-  .nav-right { gap: 6px; }
-  .drawer-link:focus-visible { outline-offset: -2px; }
 }
-/* 减少动态效果：停用光晕与装饰动画 */
 @media (prefers-reduced-motion: reduce) {
-  .mouse-glow { display: none; }
-  .nav-link, .nav-icon-btn { transition: none; }
+  nav a, nav button { transition: none; }
 }
 </style>

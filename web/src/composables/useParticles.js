@@ -16,7 +16,8 @@ export function useParticles() {
       this.speedY = -(Math.random() * 0.4 + 0.15)
       this.speedX = (Math.random() - 0.5) * 0.3
       this.opacity = Math.random() * 0.4 + 0.15
-      this.hue = Math.random() > 0.5 ? '184,148,76' : '120,105,81'
+      // 淡墨双色：苔绿与茶棕，明暗主题下皆可读
+      this.hue = Math.random() > 0.5 ? '107,123,110' : '168,146,121'
     }
     update() {
       this.x += this.speedX; this.y += this.speedY

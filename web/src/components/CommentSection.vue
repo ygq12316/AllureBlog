@@ -1,43 +1,47 @@
 <template>
-  <div class="comment-section">
-    <h4 class="cs-title">💬 评论 ({{ total }})</h4>
+  <div class="max-w-[640px] mx-auto mt-12 pt-8 border-t border-line">
+    <h4 class="text-[15px] font-light tracking-widest text-ink m-0 mb-5">评论 ({{ total }})</h4>
 
     <!-- 评论列表 -->
-    <div v-if="comments.length" class="cs-list">
-      <div v-for="c in displayComments" :key="c.id" class="cs-item">
-        <img :src="commentAvatar(c)" class="cs-avatar" />
-        <div class="cs-body">
-          <div class="cs-head">
-            <span class="cs-nick">{{ c.nickname || '匿名' }}</span>
-            <span v-if="c.visitor_uuid && c.visitor_uuid.startsWith('admin_')" class="cs-admin-badge">博主</span>
-            <span v-if="c.signature" class="cs-sig">{{ c.signature }}</span>
-            <time class="cs-time">{{ rel(c.created_at) }}</time>
+    <div v-if="comments.length" class="mb-4">
+      <div v-for="c in displayComments" :key="c.id" class="flex gap-2.5 py-3 border-b border-line2">
+        <img :src="commentAvatar(c)" class="w-8 h-8 rounded-full shrink-0 bg-paper2" alt="" />
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-1">
+            <span class="text-[13px] text-accent-strong">{{ c.nickname || '匿名' }}</span>
+            <span v-if="c.visitor_uuid && c.visitor_uuid.startsWith('admin_')"
+              class="text-[9px] px-1.5 py-px border border-cinnabar/60 text-cinnabar">博主</span>
+            <span v-if="c.signature" class="text-[10px] text-ink3">{{ c.signature }}</span>
+            <time class="text-[10px] text-ink3 ml-auto">{{ rel(c.created_at) }}</time>
           </div>
-          <p class="cs-content">{{ c.content }}</p>
+          <p class="text-sm text-ink m-0 leading-relaxed break-words">{{ c.content }}</p>
         </div>
       </div>
     </div>
-    <div v-else class="cs-empty">还没有评论，来说两句吧</div>
+    <div v-else class="text-[13px] text-ink3 text-center py-6">还没有评论，来说两句吧</div>
 
     <!-- 折叠/展开 -->
-    <div v-if="comments.length > 10" class="cs-toggle" @click="expanded = !expanded">
-      <n-icon :component="expanded ? ChevronUp : ChevronDown" size="14" />
+    <div v-if="comments.length > 10" @click="expanded = !expanded"
+      class="text-xs text-accent-strong cursor-pointer flex items-center justify-center gap-1 py-2 pb-4 transition-colors duration-700 hover:text-ink">
+      <component :is="expanded ? ChevronUp : ChevronDown" class="w-3.5 h-3.5" />
       {{ expanded ? '收起' : `展开更多 (${comments.length - 10}条)` }}
     </div>
 
     <!-- 未登录提示 -->
-    <div v-if="!loggedIn" class="cs-input-row">
-      <div class="cs-login-hint" @click="openLogin">👋 登录后参与评论</div>
+    <div v-if="!loggedIn" class="flex">
+      <div class="flex-1 py-3.5 text-center bg-paper2 border border-line text-[13px] font-light text-ink2 cursor-pointer transition-colors duration-700 hover:border-accent hover:text-accent-strong"
+        @click="openLogin">登录后参与评论</div>
     </div>
     <!-- 已登录输入区 -->
-    <div v-else class="cs-input-row">
-      <img :src="myAvatar" class="cs-avatar" />
-      <div class="cs-input-wrap">
-        <textarea v-model="content" class="cs-textarea" placeholder="写下你的想法..." maxlength="500" rows="2"
-          @keydown.enter.ctrl="submit" />
-        <div class="cs-input-foot">
-          <span class="cs-count">{{ content.length }}/500</span>
-          <n-button size="small" type="primary" @click="submit" :disabled="!content.trim()">发送</n-button>
+    <div v-else class="flex gap-2.5 items-start">
+      <img :src="myAvatar" class="w-8 h-8 rounded-full shrink-0 bg-paper2" alt="" />
+      <div class="flex-1 min-w-0">
+        <textarea v-model="content" placeholder="写下你的想法..." maxlength="500" rows="2"
+          @keydown.enter.ctrl="submit"
+          class="w-full bg-paper2 border border-line focus:outline-none focus:border-accent text-[13px] leading-relaxed p-2.5 resize-none placeholder:text-ink3 transition-colors duration-700" />
+        <div class="flex items-center justify-between mt-1.5">
+          <span class="text-[11px] text-ink3">{{ content.length }}/500</span>
+          <InkButton variant="primary" size="sm" @click="submit" :disabled="!content.trim()">发送</InkButton>
         </div>
       </div>
     </div>
@@ -47,6 +51,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ChevronDown, ChevronUp } from '@vicons/ionicons5'
+import InkButton from './ui/InkButton.vue'
 import { useVisitor } from '../composables/useVisitor'
 import { listComments, createComment } from '../api/comments'
 import { rel } from '../utils/format'
@@ -126,149 +131,3 @@ function commentAvatar(c) {
   return c.avatar_url || dicebearUrl(c.avatar_style || 'lorelei', c.visitor_uuid)
 }
 </script>
-
-<style scoped>
-.comment-section {
-  max-width: 640px;
-  margin: 48px auto 0;
-  padding-top: 32px;
-  border-top: 1px solid var(--card-border);
-}
-.cs-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0 0 20px;
-}
-
-.cs-list {
-  margin-bottom: 16px;
-}
-.cs-item {
-  display: flex;
-  gap: 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--card-border);
-}
-.cs-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--tag-bg);
-}
-.cs-body {
-  flex: 1;
-  min-width: 0;
-}
-.cs-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-.cs-nick {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gold);
-}
-.cs-admin-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  background: var(--gold);
-  color: #fff;
-  border-radius: 3px;
-}
-.cs-sig {
-  font-size: 10px;
-  color: var(--muted);
-}
-.cs-time {
-  font-size: 10px;
-  color: var(--muted);
-  margin-left: auto;
-}
-.cs-content {
-  font-size: 14px;
-  color: var(--text);
-  margin: 0;
-  line-height: 1.7;
-  word-break: break-word;
-}
-
-.cs-empty {
-  font-size: 13px;
-  color: var(--muted);
-  text-align: center;
-  padding: 24px 0;
-}
-
-.cs-toggle {
-  font-size: 12px;
-  color: var(--gold);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  justify-content: center;
-  padding: 8px 0 16px;
-}
-.cs-toggle:hover {
-  text-decoration: underline;
-}
-
-.cs-input-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-.cs-input-wrap {
-  flex: 1;
-  min-width: 0;
-}
-.cs-textarea {
-  width: 100%;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--tag-bg);
-  color: var(--text);
-  font-family: 'LXGW WenKai', serif;
-  font-size: 13px;
-  line-height: 1.6;
-  padding: 10px 12px;
-  resize: none;
-  outline: none;
-  caret-color: var(--gold);
-}
-.cs-textarea:focus {
-  border-color: var(--gold);
-}
-.cs-textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.5;
-}
-.cs-input-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
-}
-.cs-count {
-  font-size: 11px;
-  color: var(--muted);
-}
-.cs-login-hint {
-  flex: 1;
-  padding: 14px;
-  text-align: center;
-  background: var(--tag-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-  transition: border-color .2s, color .2s;
-}
-.cs-login-hint:hover { border-color: var(--gold); color: var(--gold); }
-</style>

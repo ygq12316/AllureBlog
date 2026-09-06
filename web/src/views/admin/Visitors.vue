@@ -1,27 +1,47 @@
 <template>
   <PageShell title="访客管理" width="wide">
     <div class="panel">
-      <n-data-table :columns="cols" :data="visitors" :bordered="false" size="small" :row-key="r => r.uuid" />
+      <InkTable :columns="cols" :data="visitors" :row-key="r => r.uuid">
+        <template #cell-nickname="{ row }">
+          <span class="flex items-center gap-2">
+            <img :src="entityAvatar(row)" class="w-7 h-7 rounded-full bg-paper2" alt="" />
+            <span class="tracking-wide text-ink">{{ row.nickname }}</span>
+          </span>
+        </template>
+        <template #actions="{ row }">
+          <span class="flex gap-2">
+            <InkButton variant="link" size="xs" @click="editVisitor(row)">编辑</InkButton>
+            <InkPopconfirm v-if="!row.uuid.startsWith('admin_')" text="确定删除？评论和弹幕会保留。" @confirm="del(row.uuid)">
+              <template #trigger><InkButton variant="danger" size="xs">删除</InkButton></template>
+            </InkPopconfirm>
+          </span>
+        </template>
+      </InkTable>
     </div>
 
     <!-- 编辑弹窗 -->
-    <n-modal :show="editing" @update:show="editing = $event">
-      <div class="edit-card">
-        <h4>编辑访客</h4>
-        <img :src="editForm.avatar" class="edit-avatar" />
-        <n-input v-model:value="editForm.nickname" placeholder="昵称" style="margin-bottom:8px" />
-        <n-input v-model:value="editForm.signature" placeholder="签名" style="margin-bottom:12px" />
-        <n-button type="primary" block @click="saveEdit">保存</n-button>
+    <InkModal :show="editing" @update:show="editing = $event" title="编辑访客" width="320px">
+      <div class="text-center">
+        <img :src="editForm.avatar" class="w-14 h-14 rounded-full mx-auto mb-4 border border-accent" alt="访客头像" />
+        <div class="flex flex-col gap-3 text-left">
+          <InkInput v-model="editForm.nickname" placeholder="昵称" />
+          <InkInput v-model="editForm.signature" placeholder="签名" />
+          <InkButton variant="primary" block @click="saveEdit">保存</InkButton>
+        </div>
       </div>
-    </n-modal>
+    </InkModal>
   </PageShell>
 </template>
 
 <script setup>
-import { ref, onMounted, h } from 'vue'
-import { NButton, NPopconfirm } from 'naive-ui'
+import { ref, onMounted } from 'vue'
 import { listVisitors, updateVisitor, removeVisitor } from '../../api/visitors'
 import PageShell from '../../components/admin/PageShell.vue'
+import InkTable from '../../components/ui/InkTable.vue'
+import InkModal from '../../components/ui/InkModal.vue'
+import InkInput from '../../components/ui/InkInput.vue'
+import InkButton from '../../components/ui/InkButton.vue'
+import InkPopconfirm from '../../components/ui/InkPopconfirm.vue'
 import { entityAvatar } from '../../utils/avatar'
 
 const visitors = ref([])
@@ -29,30 +49,9 @@ const editing = ref(false)
 const editForm = ref({ uuid: '', nickname: '', signature: '', avatar: '' })
 
 const cols = [
-  {
-    title: '访客', key: 'nickname', width: 200,
-    render(row) {
-      return h('div', { style: 'display:flex;align-items:center;gap:8px' }, [
-        h('img', { src: entityAvatar(row), style: 'width:28px;height:28px;border-radius:50%;background:var(--tag-bg)' }),
-        h('span', { style: 'font-weight:600' }, row.nickname),
-      ])
-    },
-  },
-  { title: '签名', key: 'signature', width: '*', ellipsis: { tooltip: true }, render(row) { return row.signature || '—' } },
+  { title: '访客', key: 'nickname', width: 200, slot: true },
+  { title: '签名', key: 'signature', ellipsis: true, render(row) { return row.signature || '—' } },
   { title: '注册时间', key: 'created_at', width: 110, render(row) { return row.created_at?.slice(0, 10) } },
-  {
-    title: '', width: 90,
-    render(row) {
-      const btns = [h(NButton, { size: 'tiny', onClick: () => editVisitor(row) }, { default: () => '编辑' })]
-      if (!row.uuid.startsWith('admin_')) {
-        btns.push(h(NPopconfirm, { onPositiveClick: () => del(row.uuid) }, {
-          trigger: () => h(NButton, { size: 'tiny', text: true, type: 'error' }, { default: () => '删除' }),
-          default: () => '确定删除？评论和弹幕会保留。',
-        }))
-      }
-      return h('div', { style: 'display:flex;gap:2px' }, btns)
-    },
-  },
 ]
 
 onMounted(async () => {
@@ -93,9 +92,3 @@ async function del(uuid) {
   } catch {}
 }
 </script>
-
-<style scoped>
-.edit-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 24px; max-width: 300px; margin: 0 auto; text-align: center; }
-.edit-card h4 { font-size: 16px; margin: 0 0 16px; color: var(--text); }
-.edit-avatar { width: 56px; height: 56px; border-radius: 50%; margin-bottom: 14px; border: 2px solid var(--gold); }
-</style>

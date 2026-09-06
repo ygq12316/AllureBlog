@@ -50,7 +50,7 @@ async function sendDm() {
     const data = await createDanmaku({
       visitor_uuid: visitor.value.uuid,
       content: dmText.value.trim(),
-      color: '#b8944c',
+      color: '#a89279',
     })
     addToTrack(data.danmaku)
   } catch {}
@@ -120,17 +120,16 @@ onUnmounted(() => clearInterval(timer))
   pointer-events: all; z-index: 60;
 }
 .dm-side-pill {
-  background: var(--bg);
-  border: 2px solid var(--card-border);
-  border-radius: 50px;
+  background: var(--paper);
+  border: 1px solid var(--line);
   padding: 8px 16px;
-  font-size: 12px; color: var(--muted);
+  font-size: 12px; color: var(--ink3);
   cursor: pointer;
-  transition: border-color .3s, color .2s;
+  transition: border-color .7s ease-in-out, color .7s ease-in-out;
   font-family: 'LXGW WenKai', serif;
 }
 .dm-side-pill:hover {
-  border-color: var(--gold); color: var(--gold);
+  border-color: var(--accent); color: var(--accent-strong);
 }
 .dm-pill-input {
   padding: 4px 6px 4px 14px;
@@ -138,11 +137,14 @@ onUnmounted(() => clearInterval(timer))
 }
 .dm-pill-text {
   border: none; background: transparent;
-  color: var(--text); font-size: 12px;
+  color: var(--ink); font-size: 12px;
   font-family: 'LXGW WenKai', serif;
   outline: none;
-  caret-color: var(--gold);
+  caret-color: var(--accent);
   width: 80px;
 }
-.dm-pill-text::placeholder { color: var(--muted); }
+.dm-pill-text::placeholder { color: var(--ink3); }
+@media (prefers-reduced-motion: reduce) {
+  .dm-side-pill { transition: none; }
+}
 </style>

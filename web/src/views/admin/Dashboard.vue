@@ -1,44 +1,50 @@
 <template>
-  <div class="dash">
+  <div class="max-w-[720px] mx-auto">
     <!-- 欢迎 -->
-    <div class="welcome">
-      <img v-if="authorAvatar" :src="authorAvatar" class="welcome-img" />
-      <div v-else class="avatar"><n-icon size="18" :component="PersonIcon" /></div>
+    <div class="flex items-center gap-3 mb-7">
+      <img v-if="authorAvatar" :src="authorAvatar" class="w-10 h-10 rounded-full object-cover border border-accent" alt="博主头像" />
+      <div v-else class="w-10 h-10 rounded-full bg-paper2 border border-line flex items-center justify-center text-ink3">
+        <PersonIcon class="w-[18px] h-[18px]" />
+      </div>
       <div>
-        <div class="w-name">欢迎回来，{{ authorName }}</div>
-        <div v-if="authorSig" class="w-sub">{{ authorSig }}</div>
+        <div class="text-[17px] tracking-widest text-ink">欢迎回来，{{ authorName }}</div>
+        <div v-if="authorSig" class="text-xs text-ink3">{{ authorSig }}</div>
       </div>
     </div>
 
     <!-- 统计 -->
-    <div class="stats">
-      <div class="panel stat" v-for="s in statList" :key="s.label">
-        <n-icon size="18" color="var(--gold)" :component="s.icon" />
-        <div class="stat-num">{{ s.value }}</div>
-        <div class="stat-label">{{ s.label }}</div>
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="panel flex flex-col items-center gap-1 !py-4" v-for="s in statList" :key="s.label">
+        <component :is="s.icon" class="w-[18px] h-[18px] text-accent" />
+        <div class="text-2xl font-light text-ink">{{ s.value }}</div>
+        <div class="text-[11px] text-ink3">{{ s.label }}</div>
       </div>
     </div>
 
     <!-- 快捷 -->
-    <div class="quick">
-      <n-button type="primary" @click="$router.push('/admin/articles/new')"><n-icon :component="CreateIcon" /> 写文章</n-button>
-      <n-button @click="$router.push('/admin/notes/new')"><n-icon :component="ChatIcon" /> 写随笔</n-button>
+    <div class="flex gap-2.5 mb-7">
+      <InkButton variant="primary" block @click="$router.push('/admin/articles/new')"><span class="inline-flex items-center gap-1.5"><CreateIcon class="w-4 h-4" /> 写文章</span></InkButton>
+      <InkButton block @click="$router.push('/admin/notes/new')"><span class="inline-flex items-center gap-1.5"><ChatIcon class="w-4 h-4" /> 写随笔</span></InkButton>
     </div>
 
     <!-- 最近 -->
-    <div class="recent">
-      <div class="panel col">
-        <div class="col-title">最近文章</div>
-        <div v-if="!articles.length" class="col-empty">暂无</div>
-        <div v-for="a in articles" :key="a.id" class="col-item" @click="$router.push(`/admin/articles/${a.id}/edit`)">
-          <span class="ci-title">{{ a.title }}</span><span class="ci-date">{{ fmt(a.created_at) }}</span>
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="panel">
+        <div class="text-[13px] tracking-widest text-ink mb-2.5">最近文章</div>
+        <div v-if="!articles.length" class="text-xs text-ink3 py-4 text-center">暂无</div>
+        <div v-for="a in articles" :key="a.id" @click="$router.push(`/admin/articles/${a.id}/edit`)"
+          class="flex justify-between items-center py-2 border-b border-line2 last:border-b-0 cursor-pointer text-[13px] transition-colors duration-700 hover:text-accent-strong group">
+          <span class="truncate flex-1 mr-2 text-ink group-hover:text-accent-strong">{{ a.title }}</span>
+          <span class="text-[11px] text-ink3 whitespace-nowrap">{{ fmt(a.created_at) }}</span>
         </div>
       </div>
-      <div class="panel col">
-        <div class="col-title">最近随笔</div>
-        <div v-if="!nlist.length" class="col-empty">暂无</div>
-        <div v-for="n in nlist" :key="n.id" class="col-item" @click="$router.push('/admin/notes')">
-          <span class="ci-title" v-html="trunc(n.html,24)" /><span class="ci-date">{{ rel(n.created_at) }}</span>
+      <div class="panel">
+        <div class="text-[13px] tracking-widest text-ink mb-2.5">最近随笔</div>
+        <div v-if="!nlist.length" class="text-xs text-ink3 py-4 text-center">暂无</div>
+        <div v-for="n in nlist" :key="n.id" @click="$router.push('/admin/notes')"
+          class="flex justify-between items-center py-2 border-b border-line2 last:border-b-0 cursor-pointer text-[13px] transition-colors duration-700 group">
+          <span class="truncate flex-1 mr-2 text-ink group-hover:text-accent-strong" v-html="trunc(n.html,24)" />
+          <span class="text-[11px] text-ink3 whitespace-nowrap">{{ rel(n.created_at) }}</span>
         </div>
       </div>
     </div>
@@ -48,6 +54,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { PersonOutline, DocumentTextOutline, ChatbubbleOutline, ChatbubblesOutline, FolderOpenOutline, PricetagsOutline, CreateOutline, PeopleOutline } from '@vicons/ionicons5'
+import InkButton from '../../components/ui/InkButton.vue'
 import { getStats } from '../../api/stats'
 import { listArticles } from '../../api/articles'
 import { listNotes } from '../../api/notes'
@@ -80,23 +87,3 @@ onMounted(async()=>{
 
 function fmt(d){return fmtDate(d)}
 </script>
-
-<style scoped>
-.dash{max-width:720px;margin:0 auto}
-.welcome{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-.avatar{width:40px;height:40px;border-radius:50%;background:var(--tag-bg);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;color:var(--gold)}
-.welcome-img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)}
-.w-name{font-size:17px;font-weight:700;color:var(--text)}.w-sub{font-size:12px;color:var(--muted)}
-
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-.stat{text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 8px}
-.stat-num{font-size:24px;font-weight:700;color:var(--text)}.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
-
-.quick{display:flex;gap:10px;margin-bottom:28px}.quick .n-button{flex:1;height:40px}
-
-.recent{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.col-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px}
-.col-empty{font-size:12px;color:var(--muted);padding:16px 0;text-align:center}
-.col-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--card-border);cursor:pointer;font-size:13px}.col-item:hover{color:var(--gold)}
-.ci-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:8px;color:var(--text)}.ci-date{font-size:11px;color:var(--muted);white-space:nowrap}
-</style>

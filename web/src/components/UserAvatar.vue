@@ -1,49 +1,59 @@
 <template>
-  <div class="ua-wrap">
-    <div v-if="!isLoggedIn" class="ua-avatar" @click="showModal = true" title="登录">
-      <n-icon size="18" :component="PersonIcon" />
+  <div class="flex items-center">
+    <div v-if="!isLoggedIn" @click="showModal = true" title="登录"
+      class="w-[34px] h-[34px] rounded-full border border-line bg-paper2 flex items-center justify-center cursor-pointer text-ink3 overflow-hidden shrink-0 transition-colors duration-700 hover:border-accent hover:text-accent-strong">
+      <PersonIcon class="w-[18px] h-[18px]" />
     </div>
-    <n-dropdown v-else trigger="hover" :options="dropdownOpts" @select="onSelect">
-      <div class="ua-avatar ua-avatar--logged">
-        <img :src="userAvatar" class="ua-img" />
+    <InkDropdown v-else :options="dropdownOpts" @select="onSelect">
+      <div class="w-[34px] h-[34px] rounded-full border border-accent bg-paper2 flex items-center justify-center cursor-pointer overflow-hidden shrink-0 transition-colors duration-700 hover:border-accent-strong">
+        <img :src="userAvatar" class="w-full h-full object-cover" alt="头像" />
       </div>
-    </n-dropdown>
+    </InkDropdown>
 
-    <n-modal :show="showModal" @update:show="showModal = $event" transform-origin="center">
-      <div class="auth-card">
-        <div class="auth-tabs">
-          <span class="auth-tab" :class="{ active: activeTab==='login' }" @click="activeTab='login'">登录</span>
-          <span class="auth-tab-sep">|</span>
-          <span class="auth-tab" :class="{ active: activeTab==='register' }" @click="activeTab='register'">注册</span>
-          <span class="auth-tab-sep">|</span>
-          <span class="auth-tab" :class="{ active: activeTab==='admin' }" @click="activeTab='admin'">管理员</span>
-        </div>
-
-        <!-- 管理员登录 -->
-        <div v-if="activeTab==='admin'" class="auth-form">
-          <n-input v-model:value="adminForm.admin_user" placeholder="管理员账号" size="small" />
-          <n-input v-model:value="adminForm.admin_pass" type="password" placeholder="管理员密码" size="small" @keydown.enter="doAdminLogin" show-password-on="click" />
-          <n-button type="warning" block size="small" @click="doAdminLogin" :loading="adminLoading" :disabled="!adminForm.admin_user||!adminForm.admin_pass">管理员登录</n-button>
-        </div>
-
-        <!-- 访客登录/注册 -->
-        <div v-else class="auth-form">
-          <n-input v-model:value="form.username" placeholder="用户名" size="small" :maxlength="20" clearable />
-          <n-input v-model:value="form.password" type="password" placeholder="密码" size="small" :maxlength="50" @keydown.enter="doSubmit" show-password-on="click" />
-          <n-input v-if="activeTab==='register'" v-model:value="form.confirmPwd" type="password" placeholder="确认密码" size="small" :maxlength="50" show-password-on="click" />
-          <n-button type="primary" block size="small" @click="doSubmit" :loading="submitting" :disabled="!canSubmit">
-            {{ activeTab === 'login' ? '登录' : '注册' }}
-          </n-button>
-        </div>
-        <p v-if="errorMsg" class="auth-err">{{ errorMsg }}</p>
+    <InkModal :show="showModal" @update:show="showModal = $event" width="320px">
+      <div class="flex items-center justify-center gap-2 mb-5">
+        <span class="text-[13px] cursor-pointer transition-colors duration-700"
+          :class="activeTab === 'login' ? 'text-ink border-b border-accent pb-0.5' : 'text-ink3 hover:text-ink2'"
+          @click="activeTab = 'login'">登录</span>
+        <span class="text-[11px] text-line">|</span>
+        <span class="text-[13px] cursor-pointer transition-colors duration-700"
+          :class="activeTab === 'register' ? 'text-ink border-b border-accent pb-0.5' : 'text-ink3 hover:text-ink2'"
+          @click="activeTab = 'register'">注册</span>
+        <span class="text-[11px] text-line">|</span>
+        <span class="text-[13px] cursor-pointer transition-colors duration-700"
+          :class="activeTab === 'admin' ? 'text-ink border-b border-accent pb-0.5' : 'text-ink3 hover:text-ink2'"
+          @click="activeTab = 'admin'">管理员</span>
       </div>
-    </n-modal>
+
+      <!-- 管理员登录 -->
+      <div v-if="activeTab === 'admin'" class="flex flex-col gap-3">
+        <InkInput v-model="adminForm.admin_user" placeholder="管理员账号" />
+        <InkInput v-model="adminForm.admin_pass" type="password" placeholder="管理员密码" @keydown.enter="doAdminLogin" />
+        <InkButton variant="primary" block size="sm" @click="doAdminLogin" :loading="adminLoading"
+          :disabled="!adminForm.admin_user || !adminForm.admin_pass">管理员登录</InkButton>
+      </div>
+
+      <!-- 访客登录/注册 -->
+      <div v-else class="flex flex-col gap-3">
+        <InkInput v-model="form.username" placeholder="用户名" :maxlength="20" clearable />
+        <InkInput v-model="form.password" type="password" placeholder="密码" :maxlength="50" @keydown.enter="doSubmit" />
+        <InkInput v-if="activeTab === 'register'" v-model="form.confirmPwd" type="password" placeholder="确认密码" :maxlength="50" />
+        <InkButton variant="primary" block size="sm" @click="doSubmit" :loading="submitting" :disabled="!canSubmit">
+          {{ activeTab === 'login' ? '登录' : '注册' }}
+        </InkButton>
+      </div>
+      <p v-if="errorMsg" class="text-xs text-cinnabar text-center mt-3 leading-snug">{{ errorMsg }}</p>
+    </InkModal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { PersonOutline } from '@vicons/ionicons5'
+import InkDropdown from './ui/InkDropdown.vue'
+import InkModal from './ui/InkModal.vue'
+import InkInput from './ui/InkInput.vue'
+import InkButton from './ui/InkButton.vue'
 import { useVisitor } from '../composables/useVisitor'
 import { setToken, setAdminUser, hasAdminToken, clearAdminSession } from '../api/client'
 import { login } from '../api/auth'
@@ -147,21 +157,3 @@ function onSelect(key) {
   }
 }
 </script>
-
-<style scoped>
-.ua-wrap { display: flex; align-items: center; }
-.ua-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--tag-bg); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); flex-shrink: 0; overflow: hidden; transition: border-color .25s, color .25s, transform .25s; }
-.ua-avatar:hover { border-color: var(--gold); color: var(--gold); transform: scale(1.05); }
-.ua-avatar--logged { border-color: var(--gold); }
-.ua-img { width: 100%; height: 100%; object-fit: cover; }
-.auth-card { width: 280px; max-width: 86vw; border-radius: 10px; background: var(--card); border: 1px solid var(--card-border); box-shadow: 0 8px 32px rgba(0,0,0,.1); padding: 20px 20px 16px; }
-.auth-tabs { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 14px; }
-.auth-tab { font-size: 13px; color: var(--muted); cursor: pointer; transition: color .2s; }
-.auth-tab.active { color: var(--gold); font-weight: 600; }
-.auth-tab-sep { font-size: 11px; color: var(--border); }
-.auth-form { display: flex; flex-direction: column; gap: 8px; }
-.auth-err { font-size: 11px; color: #c97a4a; text-align: center; margin: 8px 0 0; line-height: 1.4; }
-.auth-foot { display: flex; justify-content: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--card-border); font-size: 11px; }
-.auth-foot a { color: var(--muted); cursor: pointer; transition: color .2s; }
-.auth-foot a:hover { color: var(--gold); }
-</style>

@@ -1,32 +1,40 @@
 <template>
-  <div class="page">
-    <div class="search-hero">
-      <n-icon size="40" color="var(--gold)" :component="SearchIcon" />
-      <h2 class="search-title">搜索文章</h2>
-      <form @submit.prevent="doSearch" class="search-form">
-        <div class="search-box" :class="{'search-box--focused':focused}">
-          <n-icon size="18" color="var(--muted)" :component="SearchIcon" />
-          <input v-model="q" placeholder="试试搜 Go、咖啡、徒步..." class="search-input" @focus="focused=true" @blur="focused=false" />
-          <button v-if="q" @click="q='';searched=false" type="button" class="search-clear"><n-icon size="14" :component="CloseIcon" /></button>
+  <div class="max-w-[600px] mx-auto text-center">
+    <div class="mb-10">
+      <SearchIcon class="w-10 h-10 text-accent mx-auto" />
+      <h2 class="text-xl md:text-2xl font-light tracking-[0.2em] text-ink my-3 mb-6">搜索文章</h2>
+      <form @submit.prevent="doSearch" class="w-full">
+        <div class="flex items-center bg-paper border px-5 py-3 gap-2 transition-colors duration-700"
+          :class="focused ? 'border-accent' : 'border-line'">
+          <SearchIcon class="w-[18px] h-[18px] text-ink3 shrink-0" />
+          <input v-model="q" placeholder="试试搜 Go、咖啡、徒步..." class="flex-1 border-0 bg-transparent font-serif text-base text-ink outline-none placeholder:text-ink3" @focus="focused=true" @blur="focused=false" />
+          <button v-if="q" @click="q='';searched=false" type="button" class="bg-transparent border-0 p-1 cursor-pointer text-ink3 hover:text-ink transition-colors duration-700 flex items-center" aria-label="清空搜索">
+            <CloseIcon class="w-3.5 h-3.5" />
+          </button>
         </div>
       </form>
     </div>
-    <div v-if="searched" class="search-results">
-      <div v-if="results.length" class="results-count">
-        <n-icon size="14" color="var(--gold)" :component="BookIcon" /> 找到 <strong>{{ results.length }}</strong> 篇关于 "<em>{{ q }}</em>" 的文章
+    <div v-if="searched" class="text-left">
+      <div v-if="results.length" class="text-xs text-ink3 mb-5 text-center flex items-center justify-center gap-1.5">
+        <BookIcon class="w-3.5 h-3.5 text-accent" /> 找到 <span class="text-ink">{{ results.length }}</span> 篇关于 "<span class="text-accent-strong">{{ q }}</span>" 的文章
       </div>
-      <div v-for="a in results" :key="a.id" class="result-item">
-        <div class="result-meta"><n-icon size="13" color="var(--gold)" :component="TimeIcon" /><time>{{ fmt(a.created_at) }}</time><span v-if="a.category" class="result-cat">{{ a.category }}</span></div>
-        <router-link :to="'/posts/'+a.slug" class="result-title">{{ a.title }}</router-link>
-        <p class="result-excerpt">{{ a.excerpt }}</p>
+      <div v-for="a in results" :key="a.id" class="py-4 border-b border-line2 group">
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <TimeIcon class="w-3.5 h-3.5 text-accent" />
+          <time class="text-[11px] text-accent-strong tracking-widest">{{ fmt(a.created_at) }}</time>
+          <span v-if="a.category" class="text-[9px] px-1.5 py-px border border-line2 text-ink3">{{ a.category }}</span>
+        </div>
+        <router-link :to="'/posts/'+a.slug" class="block text-[15px] font-light tracking-wide text-ink no-underline mb-1 transition-colors duration-700 group-hover:text-accent-strong">{{ a.title }}</router-link>
+        <p class="text-xs text-ink3 m-0 leading-relaxed">{{ a.excerpt }}</p>
       </div>
-      <div v-if="!results.length" class="no-results">
-        <n-icon size="48" color="var(--border)" :component="TrashIcon" />
-        <div class="no-results-title">没有找到 "{{ q }}"</div><div class="no-results-desc">换个关键词，或试试下面的标签</div>
+      <div v-if="!results.length" class="text-center py-10">
+        <TrashIcon class="w-12 h-12 text-line mx-auto" />
+        <div class="text-base font-light tracking-widest text-ink mt-3 mb-2">没有找到 "{{ q }}"</div>
+        <div class="text-xs text-ink3 mb-5">换个关键词，或试试下面的标签</div>
         <WordCloud :tags="allTags" @select="q=$event;doSearch()" />
       </div>
     </div>
-    <div v-else class="search-browse">
+    <div v-else class="mt-3">
       <WordCloud :tags="allTags" @select="q=$event;doSearch()" />
     </div>
   </div>
@@ -53,19 +61,3 @@ onMounted(async()=>{
 async function doSearch(){if(!q.value.trim())return;searched.value=true;try{const data=await searchArticles(q.value);results.value=data.articles||[]}catch(e){results.value=[]}}
 function fmt(d){return d?new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}):''}
 </script>
-
-<style scoped>
-.page{padding:0;max-width:600px;margin:0 auto;text-align:center}
-.search-hero{margin-bottom:40px}.search-title{font-size:clamp(22px,2.5vw,28px);font-weight:700;color:var(--text);margin:12px 0 24px}
-.search-form{width:100%}.search-box{display:flex;align-items:center;background:var(--bg);border:2px solid var(--card-border);border-radius:50px;padding:12px 20px;transition:all .3s;gap:8px}
-.search-box--focused{border-color:var(--gold);box-shadow:0 0 0 4px rgba(184,148,76,.1)}
-.search-input{flex:1;border:none;background:transparent;font-family:'LXGW WenKai',serif;font-size:16px;color:var(--text);outline:none}.search-input::placeholder{color:var(--muted)}
-.search-clear{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;display:flex;align-items:center}.search-clear:hover{color:var(--text)}
-.search-results{text-align:left}.results-count{font-size:12px;color:var(--muted);margin-bottom:20px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
-.results-count em{font-style:normal;color:var(--gold)}.result-item{padding:16px 0;border-bottom:1px solid var(--card-border)}
-.result-meta{display:flex;align-items:center;gap:6px;margin-bottom:6px}.result-meta time{font-size:11px;color:var(--gold)}.result-cat{font-size:9px;padding:1px 7px;background:var(--tag-bg);color:var(--text2);border:1px solid var(--border);border-radius:2px}
-.result-title{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;display:block;margin-bottom:4px}.result-title:hover{color:var(--gold)}
-.result-excerpt{font-size:12px;color:var(--muted);margin:0;line-height:1.6}
-.no-results{text-align:center;padding:40px 0}.no-results-title{font-size:16px;font-weight:700;color:var(--text);margin:12px 0 8px}.no-results-desc{font-size:12px;color:var(--muted);margin-bottom:20px}
-.search-browse{margin-top:12px}
-</style>

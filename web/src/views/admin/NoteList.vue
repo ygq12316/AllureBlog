@@ -1,72 +1,63 @@
 <template>
   <PageShell title="随笔管理" width="wide">
     <template #actions>
-      <n-button v-if="selected.length" type="error" size="small" @click="batchDel">删除选中 ({{ selected.length }})</n-button>
-      <n-button type="primary" @click="$router.push('/admin/notes/new')">+ 写随笔</n-button>
+      <InkButton v-if="selected.length" variant="danger" size="sm" @click="batchDel">删除选中 ({{ selected.length }})</InkButton>
+      <InkButton variant="primary" size="sm" @click="$router.push('/admin/notes/new')">+ 写随笔</InkButton>
     </template>
     <div class="panel">
-      <n-data-table :columns="cols" :data="notes" :bordered="false" size="small"
-        :row-key="r => r.id" @update:checked-row-keys="selected = $event" />
+      <InkTable :columns="cols" :data="notes" :row-key="r => r.id" selectable
+        v-model:checked="selected">
+        <template #cell-images="{ row }">
+          <div class="flex gap-1" v-if="imgs(row).length">
+            <img v-for="u in imgs(row).slice(0, 3)" :key="u" :src="u"
+              class="w-9 h-9 object-cover border border-line" alt="" />
+          </div>
+        </template>
+        <template #cell-comment_count="{ row }">
+          <a class="cursor-pointer transition-colors duration-700 hover:text-ink"
+            :class="row.comment_count > 0 ? 'text-accent-strong' : 'text-ink3'"
+            @click="router.push(`/admin/notes/${row.id}/edit`)">{{ row.comment_count ?? 0 }}</a>
+        </template>
+        <template #cell-status="{ row }">
+          <InkTag :tone="row.is_published ? 'moss' : 'default'">{{ row.is_published ? '已发布' : '草稿' }}</InkTag>
+        </template>
+        <template #actions="{ row }">
+          <span class="flex gap-2">
+            <InkButton variant="link" size="xs" @click="router.push(`/admin/notes/${row.id}/edit`)">编辑</InkButton>
+            <InkPopconfirm text="确定删除?" @confirm="del(row.id)">
+              <template #trigger><InkButton variant="danger" size="xs">删除</InkButton></template>
+            </InkPopconfirm>
+          </span>
+        </template>
+      </InkTable>
     </div>
   </PageShell>
 </template>
 <script setup>
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NTag, NPopconfirm, useMessage } from 'naive-ui'
+import { toast } from '../../composables/useToast'
 import { listNotes, removeNote } from '../../api/notes'
 import PageShell from '../../components/admin/PageShell.vue'
 
 const router = useRouter()
-const message = useMessage()
 const notes = ref([]), selected = ref([])
 
 const cols = [
-  { type: 'selection', width: 40 },
-  {
-    title: '内容', key: 'content', width: '*', ellipsis: { tooltip: true },
-    render(row) { const t = (row.content || '').replace(/\s+/g, ' ').trim(); return t || '（无文字）' },
-  },
-  {
-    title: '图片', key: 'images', width: 120,
-    render(row) {
-      const imgs = row.images ? row.images.split(',').filter(Boolean) : []
-      if (!imgs.length) return ''
-      return h('div', { style: 'display:flex;gap:4px' },
-        imgs.slice(0, 3).map(u => h('img', { src: u, style: 'width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--card-border)' })))
-    },
-  },
-  {
-    title: '评论', key: 'comment_count', width: 70,
-    render(row) {
-      return h('a', {
-        style: 'cursor:pointer;' + (row.comment_count > 0 ? 'color:var(--gold)' : 'color:var(--muted)'),
-        onClick: () => router.push(`/admin/notes/${row.id}/edit`),
-      }, String(row.comment_count ?? 0))
-    },
-  },
-  { title: '状态', width: 70, render(row) { return h(NTag, { size: 'tiny', type: row.is_published ? 'success' : 'warning', bordered: false }, { default: () => row.is_published ? '已发布' : '草稿' }) } },
-  { title: '日期', width: 110, render(row) { return new Date(row.created_at).toLocaleDateString('zh-CN') } },
-  {
-    title: '', width: 90,
-    render(row) {
-      return h('div', { style: 'display:flex;gap:2px' }, [
-        h(NButton, { size: 'tiny', onClick: () => router.push(`/admin/notes/${row.id}/edit`) }, { default: () => '编辑' }),
-        h(NPopconfirm, { onPositiveClick: () => del(row.id) }, {
-          trigger: () => h(NButton, { size: 'tiny', text: true, type: 'error' }, { default: () => '删除' }),
-          default: () => '确定删除?',
-        }),
-      ])
-    },
-  },
+  { title: '内容', key: 'content', ellipsis: true, render(row) { const t = (row.content || '').replace(/\s+/g, ' ').trim(); return t || '（无文字）' } },
+  { title: '图片', key: 'images', width: 120, slot: true },
+  { title: '评论', key: 'comment_count', width: 70, slot: true },
+  { title: '状态', key: 'status', width: 80, slot: true },
+  { title: '日期', key: 'created_at', width: 110, render(row) { return new Date(row.created_at).toLocaleDateString('zh-CN') } },
 ]
 
 onMounted(async () => { notes.value = (await listNotes({ all: 'true' })).notes || [] })
+function imgs(row) { return row.images ? row.images.split(',').filter(Boolean) : [] }
 async function del(id) {
   try {
     await removeNote(id)
     notes.value = notes.value.filter(n => n.id !== id)
-  } catch (e) { message.error('删除失败') }
+  } catch (e) { toast.error('删除失败') }
 }
 async function batchDel() {
   try {
@@ -74,7 +65,7 @@ async function batchDel() {
     notes.value = notes.value.filter(n => !selected.value.includes(n.id))
     selected.value = []
   } catch (e) {
-    message.error('批量删除失败')
+    toast.error('批量删除失败')
   }
 }
 </script>
