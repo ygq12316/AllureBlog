@@ -1,23 +1,7 @@
 <template>
   <PageShell title="博客设置" width="narrow">
     <!-- 裁剪模式 -->
-    <div v-if="cropMode" class="panel text-center">
-      <div class="relative w-[200px] h-[200px] mx-auto mb-3 rounded-full overflow-hidden border border-accent cursor-move"
-        @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag"
-        @touchstart="startDrag" @touchmove="onDrag" @touchend="endDrag" @wheel.prevent="onWheel">
-        <img :src="cropSrc" class="absolute top-0 left-0 select-none pointer-events-none" :style="cropImgStyle" alt="裁剪预览" />
-        <div class="absolute inset-0 rounded-full pointer-events-none" style="box-shadow: inset 0 0 0 999px rgba(0,0,0,.3)" />
-      </div>
-      <div class="flex items-center justify-center gap-2 mb-3">
-        <span class="text-base text-ink3">−</span>
-        <input type="range" min="0.5" max="3" step="0.05" v-model.number="cropZoom" class="w-[120px] accent-[var(--accent)]" aria-label="缩放" />
-        <span class="text-base text-ink3">+</span>
-      </div>
-      <div class="flex justify-center gap-3">
-        <InkButton size="xs" @click="cancelCrop">取消</InkButton>
-        <InkButton size="xs" variant="primary" @click="applyAvatar">裁剪</InkButton>
-      </div>
-    </div>
+    <AvatarCropper v-if="cropping" :src="cropSrc" @done="onCropped" @cancel="cropping = false" />
 
     <!-- 正常模式 -->
     <div v-else class="panel flex flex-col gap-4">
@@ -49,12 +33,13 @@ import InkFilePicker from '../../components/ui/InkFilePicker.vue'
 import { updateConfig } from '../../api/config'
 import { saveVisitor } from '../../api/visitors'
 import PageShell from '../../components/admin/PageShell.vue'
-import { useAvatarCrop } from '../../composables/useAvatarCrop'
+import AvatarCropper from '../../components/AvatarCropper.vue'
 import { useAuthor } from '../../composables/useAuthor'
 
 const { author, load, refresh } = useAuthor()
-const { cropMode, cropSrc, cropImgStyle, cropZoom, pickImage, onWheel, startDrag, onDrag, endDrag, applyCrop, cancelCrop } = useAvatarCrop()
 
+const cropping = ref(false)
+const cropSrc = ref('')
 const form = reactive({ author_name: '', author_avatar: '' })
 const saving = ref(false)
 const msg = ref('')
@@ -68,13 +53,14 @@ onMounted(async () => {
   form.author_avatar = author.value.avatar
 })
 
-async function applyAvatar() {
-  try {
-    form.author_avatar = await applyCrop()
-  } catch (e) {
-    msgOk.value = false
-    msg.value = e.response?.data?.error || '上传失败'
-  }
+function pickImage(file) {
+  cropSrc.value = URL.createObjectURL(file)
+  cropping.value = true
+}
+function onCropped(url) {
+  form.author_avatar = url
+  URL.revokeObjectURL(cropSrc.value)
+  cropping.value = false
 }
 
 async function save() {
